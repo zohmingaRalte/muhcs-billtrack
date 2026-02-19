@@ -372,6 +372,7 @@ export default function PatientDetailPage({ params }) {
   const [editing, setEditing] = useState(false)
   const [editName, setEditName] = useState("")
   const [editAge, setEditAge] = useState("")
+  const [editAgeUnit, setEditAgeUnit] = useState("years")
   const [editGender, setEditGender] = useState("male")
   const [editContact, setEditContact] = useState("")
   const [editAdmissionDate, setEditAdmissionDate] = useState("")
@@ -403,7 +404,7 @@ export default function PatientDetailPage({ params }) {
         accommodation,
         status,
         total_bill_override,
-        patients (full_name, gender, age, contact)
+        patients (full_name, gender, age, age_unit, contact)
       `)
       .eq("id", id)
       .single()
@@ -526,6 +527,7 @@ export default function PatientDetailPage({ params }) {
   function startEdit() {
     setEditName(admission.patients?.full_name || "")
     setEditAge(admission.patients?.age?.toString() || "")
+    setEditAgeUnit(admission.patients?.age_unit || "years")
     setEditGender(admission.patients?.gender || "male")
     setEditContact(admission.patients?.contact || "")
     setEditAdmissionDate(admission.admission_date || "")
@@ -547,6 +549,7 @@ export default function PatientDetailPage({ params }) {
       .update({
         full_name: editName.trim(),
         age: Number(editAge),
+        age_unit: editAgeUnit,
         gender: editGender,
         contact: editContact.trim() || null,
       })
@@ -763,13 +766,32 @@ export default function PatientDetailPage({ params }) {
                   />
                 </EditField>
                 <EditField label="Age" required>
-                  <input
-                    type="number"
-                    value={editAge}
-                    onChange={e => setEditAge(e.target.value)}
-                    min="1" max="120"
-                    className={editInputClass()}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      value={editAge}
+                      onChange={e => setEditAge(e.target.value)}
+                      min="1"
+                      max={editAgeUnit === "months" ? "11" : "120"}
+                      className={`flex-1 ${editInputClass()}`}
+                    />
+                    <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
+                      {["years", "months"].map(u => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => { setEditAgeUnit(u); setEditAge("") }}
+                          className={`px-3 py-2.5 text-[12px] font-semibold capitalize transition ${
+                            editAgeUnit === u
+                              ? "bg-gray-900 text-white"
+                              : "bg-white text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          {u === "years" ? "Yrs" : "Mo"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </EditField>
                 <EditField label="Gender">
                   <div className="grid grid-cols-2 gap-2">
@@ -861,7 +883,11 @@ export default function PatientDetailPage({ params }) {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               <InfoItem label="Name" value={admission.patients?.full_name} />
-              <InfoItem label="Age" value={admission.patients?.age ? `${admission.patients.age} yrs` : "—"} />
+              <InfoItem label="Age" value={
+                admission.patients?.age
+                  ? `${admission.patients.age} ${admission.patients.age_unit || "years"}`
+                  : "—"
+              } />
               <InfoItem label="Gender" value={admission.patients?.gender ? admission.patients.gender.charAt(0).toUpperCase() + admission.patients.gender.slice(1) : "—"} />
               <InfoItem label="Contact" value={admission.patients?.contact || "—"} />
               <InfoItem label="Ward" value={

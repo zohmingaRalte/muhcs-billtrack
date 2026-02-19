@@ -13,6 +13,7 @@ export default function NewPatientPage() {
   // Patient fields
   const [fullName, setFullName] = useState("")
   const [age, setAge] = useState("")
+  const [ageUnit, setAgeUnit] = useState("years")
   const [gender, setGender] = useState("male")
   const [contact, setContact] = useState("")
 
@@ -26,8 +27,8 @@ export default function NewPatientPage() {
   function validate() {
     const e = {}
     if (!fullName.trim()) e.fullName = "Full name is required."
-    if (!age || isNaN(age) || Number(age) <= 0 || Number(age) > 120)
-      e.age = "Enter a valid age."
+    if (!age || isNaN(age) || Number(age) <= 0 || (ageUnit === "years" && Number(age) > 120) || (ageUnit === "months" && Number(age) > 11))
+      e.age = ageUnit === "months" ? "Enter valid months (1-11)." : "Enter a valid age."
     if (!admissionDate) e.admissionDate = "Admission date is required."
     return e
   }
@@ -46,6 +47,7 @@ export default function NewPatientPage() {
       .insert({
         full_name: fullName.trim(),
         age: Number(age),
+        age_unit: ageUnit,
         gender,
         contact: contact.trim() || null,
       })
@@ -137,15 +139,33 @@ export default function NewPatientPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Age" required error={errors.age}>
-                  <input
-                    type="number"
-                    placeholder="e.g. 45"
-                    value={age}
-                    onChange={e => setAge(e.target.value)}
-                    min="1"
-                    max="120"
-                    className={inputClass(errors.age)}
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder={ageUnit === "months" ? "e.g. 3" : "e.g. 45"}
+                      value={age}
+                      onChange={e => setAge(e.target.value)}
+                      min="1"
+                      max={ageUnit === "months" ? "11" : "120"}
+                      className={`flex-1 ${inputClass(errors.age)}`}
+                    />
+                    <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
+                      {["years", "months"].map(u => (
+                        <button
+                          key={u}
+                          type="button"
+                          onClick={() => { setAgeUnit(u); setAge("") }}
+                          className={`px-3 py-3 text-[12px] font-semibold capitalize transition ${
+                            ageUnit === u
+                              ? "bg-gray-900 text-white"
+                              : "bg-white text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          {u === "years" ? "Yrs" : "Mo"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </Field>
 
                 <Field label="Gender">
