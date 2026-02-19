@@ -505,12 +505,12 @@ export default function PatientDetailPage({ params }) {
   const totalUsed = hasOverride ? Number(admission.total_bill_override) : entriesTotal
 
   // ─── Role flags ───────────────────────────────────────────────────────────
-  const isAdmin = user.role === "admin"
-  const isCounter = user.role === "counter"
-  const isLab = user.role === "lab"
-  const isXray = user.role === "xray"
-  const isPharma = user.role === "pharma"
-  const isViewer = user.role === "viewer"
+  const isAdmin = user?.role === "admin"
+  const isCounter = user?.role === "counter"
+  const isLab = user?.role === "lab"
+  const isXray = user?.role === "xray"
+  const isPharma = user?.role === "pharma"
+  const isViewer = user?.role === "viewer"
   const isAdminOrCounter = isAdmin || isCounter
 
   const canAddLab = isAdmin || isLab
@@ -726,7 +726,7 @@ export default function PatientDetailPage({ params }) {
             {/* User avatar */}
             <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
               <span className="text-white text-xs font-semibold">
-                {user.name.slice(0, 2).toUpperCase()}
+                {user?.name?.slice(0, 2).toUpperCase()}
               </span>
             </div>
           </div>

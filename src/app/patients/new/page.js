@@ -105,7 +105,7 @@ export default function NewPatientPage() {
           </div>
           <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-gray-900 flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-semibold">
-              {user.name.slice(0, 2).toUpperCase()}
+              {user?.name?.slice(0, 2).toUpperCase()}
             </span>
           </div>
         </div>
