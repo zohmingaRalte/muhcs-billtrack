@@ -514,14 +514,18 @@ export default function PatientDetailPage({ params }) {
   const isViewer = user?.role === "viewer"
   const isAdminOrCounter = isAdmin || isCounter
 
-  const canAddLab = isAdmin || isLab
+  const canAddLab = isAdmin || isLab || isXray
   const canAddPharma = isAdmin || isPharma
-  const canAddXray = isAdmin || isXray
+  const canAddXray = isAdmin || isXray || isLab
   const canAddCounter = isAdminOrCounter
   const canEditAny = isAdminOrCounter
-  const showLab = isAdmin || isCounter || isLab || isViewer
+  const canEditLab = isAdmin || isLab || isXray
+  const canEditPharma = isAdmin || isPharma
+  const canEditXray = isAdmin || isXray || isLab
+  const canEditCounter = isAdminOrCounter
+  const showLab = isAdmin || isCounter || isLab || isXray || isViewer
   const showPharma = isAdmin || isCounter || isPharma || isViewer
-  const showXray = isAdmin || isCounter || isXray || isViewer
+  const showXray = isAdmin || isCounter || isXray || isLab || isViewer
   const showCounter = isAdminOrCounter || isViewer
 
   function startEdit() {
@@ -894,10 +898,10 @@ export default function PatientDetailPage({ params }) {
                 admission.accommodation === "cabin" ? "Cabin" :
                 admission.accommodation === "semi_private" ? "Semi Private" : "General"
               } />
-              <InfoItem label="Admitted" value={formatDate(admission.admission_date)} />
+              <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
               <InfoItem
-                label="Discharged"
-                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Still admitted"}
+                label="DOD"
+                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
               />
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
             </div>
@@ -984,7 +988,7 @@ export default function PatientDetailPage({ params }) {
               <BillRow label="Lab" value={labTotal} />
               <BillRow label="X-Ray" value={xrayTotal} />
               <BillRow label="Pharmacy" value={pharmaTotal} />
-              <BillRow label="Counter" value={counterTotal} />
+              <BillRow label="Counter (Nurse fee + Doctor round + Others)" value={counterTotal} />
               <div className="pt-2.5 mt-1 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-gray-900">Total Hospital Bill</span>
                 <span className="text-[15px] md:text-[17px] font-semibold text-gray-900 tabular-nums">
@@ -1006,7 +1010,7 @@ export default function PatientDetailPage({ params }) {
             admissionId={Number(id)}
             userId={user.id}
             canAdd={canAddCounter && isActive}
-            canEdit={canEditAny}
+            canEdit={canEditCounter}
             onRefresh={fetchAll}
           />
         )}
@@ -1020,7 +1024,7 @@ export default function PatientDetailPage({ params }) {
             admissionId={Number(id)}
             userId={user.id}
             canAdd={canAddLab && isActive}
-            canEdit={canEditAny}
+            canEdit={canEditLab}
             onRefresh={fetchAll}
           />
         )}
@@ -1034,7 +1038,7 @@ export default function PatientDetailPage({ params }) {
             admissionId={Number(id)}
             userId={user.id}
             canAdd={canAddXray && isActive}
-            canEdit={canEditAny}
+            canEdit={canEditXray}
             onRefresh={fetchAll}
           />
         )}
@@ -1048,7 +1052,7 @@ export default function PatientDetailPage({ params }) {
             admissionId={Number(id)}
             userId={user.id}
             canAdd={canAddPharma && isActive}
-            canEdit={canEditAny}
+            canEdit={canEditPharma}
             onRefresh={fetchAll}
           />
         )}

@@ -50,6 +50,12 @@ export default function Dashboard() {
   const [rates, setRates]                   = useState({ muhcs: 0, cabin: 0 })
   const [activeTab, setActiveTab]           = useState("active")
   const [totalClaim, setTotalClaim]         = useState(0)
+  const [totalReceived, setTotalReceived]   = useState(0)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentAmount, setPaymentAmount]   = useState("")
+  const [paymentDate, setPaymentDate]       = useState("")
+  const [paymentSaving, setPaymentSaving]   = useState(false)
+  const [paymentError, setPaymentError]     = useState("")
   const [loading, setLoading]               = useState(true)
   const [search, setSearch]                 = useState("")
 
@@ -118,6 +124,11 @@ export default function Dashboard() {
       total += days * muhcs + getWardAddon(a, days)
     })
     setTotalClaim(total)
+
+    // Fetch total payments received
+    const { data: payments } = await supabase.from("payments").select("amount")
+    const received = (payments || []).reduce((s, p) => s + Number(p.amount), 0)
+    setTotalReceived(received)
 
     const admIds = (admissionData || []).map(a => a.id)
     if (admIds.length > 0) {
@@ -198,6 +209,25 @@ export default function Dashboard() {
     return total + (balanceMap[a.id]?.used || 0)
   }, 0)
 
+  async function savePayment() {
+    setPaymentError("")
+    if (!paymentAmount || isNaN(paymentAmount) || Number(paymentAmount) <= 0) {
+      setPaymentError("Enter a valid amount."); return
+    }
+    if (!paymentDate) { setPaymentError("Select a date."); return }
+    setPaymentSaving(true)
+    const { error } = await supabase.from("payments").insert({
+      amount: Number(paymentAmount),
+      payment_date: paymentDate,
+      created_by: user?.id,
+    })
+    if (error) { setPaymentError(error.message); setPaymentSaving(false); return }
+    setPaymentSaving(false)
+    setShowPaymentModal(false)
+    setPaymentAmount(""); setPaymentDate("")
+    fetchData()
+  }
+
   const yearOptions = []
   for (let y = 2024; y <= now.getFullYear(); y++) yearOptions.push(y)
 
@@ -239,6 +269,48 @@ export default function Dashboard() {
                 disabled={pwSaving}
                 className="flex-1 py-3 text-[13px] font-semibold text-white bg-gray-900 hover:bg-gray-700 active:scale-95 disabled:opacity-50 rounded-xl transition"
               >{pwSaving ? "Saving…" : "Save"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment modal — admin only */}
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => { setShowPaymentModal(false); setPaymentError("") }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-[17px] font-semibold text-gray-900">Add Payment Received</h2>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Amount (₹)</label>
+              <input
+                type="number"
+                placeholder="e.g. 50000"
+                value={paymentAmount}
+                onChange={e => { setPaymentAmount(e.target.value); setPaymentError("") }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Date</label>
+              <input
+                type="date"
+                value={paymentDate}
+                onChange={e => { setPaymentDate(e.target.value); setPaymentError("") }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+              />
+            </div>
+            {paymentError && <p className="text-[12px] text-red-500">{paymentError}</p>}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => { setShowPaymentModal(false); setPaymentError("") }}
+                className="flex-1 py-3 text-[13px] font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 active:scale-95 transition"
+              >Cancel</button>
+              <button
+                onClick={savePayment}
+                disabled={paymentSaving}
+                className="flex-1 py-3 text-[13px] font-semibold text-white bg-gray-900 hover:bg-gray-700 active:scale-95 disabled:opacity-50 rounded-xl transition"
+              >{paymentSaving ? "Saving…" : "Save"}</button>
             </div>
           </div>
         </div>
@@ -297,7 +369,12 @@ export default function Dashboard() {
           <StatCard label="Total Patients" value={loading ? "—" : patientsCount} color="gray" />
           <StatCard label="Active Cases"   value={loading ? "—" : activeCases.length} color="green" accent />
           <StatCard label="Discharged"     value={loading ? "—" : dischargedCases.length} color="blue" />
-          <StatCard label="Total Claim"    value={loading ? "—" : formatINR(totalClaim)} color="orange" />
+          <ClaimCard
+            claim={loading ? null : totalClaim}
+            received={loading ? null : totalReceived}
+            isAdmin={user?.role === "admin"}
+            onAdd={() => { setPaymentAmount(""); setPaymentDate(new Date().toISOString().split("T")[0]); setShowPaymentModal(true) }}
+          />
         </div>
 
         {/* Monthly Summary */}
@@ -412,9 +489,9 @@ export default function Dashboard() {
                     <tr className="border-b border-gray-100">
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Name</th>
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Ward</th>
-                      <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Admitted</th>
+                      <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DOA</th>
                       {activeTab === "discharged" && (
-                        <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Discharged</th>
+                        <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DOD</th>
                       )}
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Days</th>
                       {activeTab === "discharged" ? (
@@ -521,6 +598,53 @@ export default function Dashboard() {
 }
 
 // ─── SUB COMPONENTS ───────────────────────────────────────────────────────────
+
+function ClaimCard({ claim, received, isAdmin, onAdd }) {
+  const pending = claim !== null && received !== null ? claim - received : null
+  return (
+    <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-7 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <div className="flex items-center gap-1.5">
+          <span className="inline-block h-1.5 w-1.5 rounded-full shrink-0 bg-amber-400" />
+          <span className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-widest leading-tight">Claim</span>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={onAdd}
+            className="h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition active:scale-95"
+            title="Add payment"
+          >
+            <svg width="8" height="8" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="#374151" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+          </button>
+        )}
+      </div>
+      <div className="space-y-2">
+        <div>
+          <p className="text-[10px] text-gray-400 mb-0.5">Total Claimed</p>
+          <p className="text-[18px] md:text-[22px] font-semibold text-gray-900 tabular-nums tracking-tight leading-none">
+            {claim !== null ? formatINR(claim) : "—"}
+          </p>
+        </div>
+        <div>
+          <p className="text-[10px] text-gray-400 mb-0.5">Received</p>
+          <p className="text-[15px] md:text-[18px] font-semibold text-emerald-600 tabular-nums tracking-tight leading-none">
+            {received !== null ? formatINR(received) : "—"}
+          </p>
+        </div>
+        {pending !== null && pending > 0 && (
+          <div>
+            <p className="text-[10px] text-gray-400 mb-0.5">Pending</p>
+            <p className="text-[13px] md:text-[15px] font-semibold text-amber-600 tabular-nums tracking-tight leading-none">
+              {formatINR(pending)}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 function StatCard({ label, value, color, accent }) {
   const colorMap = {
