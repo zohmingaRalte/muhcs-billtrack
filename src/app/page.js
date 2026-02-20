@@ -58,6 +58,7 @@ export default function Dashboard() {
   const [paymentError, setPaymentError]     = useState("")
   const [loading, setLoading]               = useState(true)
   const [search, setSearch]                 = useState("")
+  const [sortDir, setSortDir]               = useState("desc") // newest first by default
 
   const now = new Date()
   const [summaryMonth, setSummaryMonth]     = useState(now.getMonth())
@@ -183,9 +184,14 @@ export default function Dashboard() {
   const activeCases     = admissions.filter(a => a.status === "admitted")
   const dischargedCases = admissions.filter(a => a.status === "discharged")
   const baseData        = activeTab === "active" ? activeCases : dischargedCases
-  const displayData     = search.trim()
+  const filteredData    = search.trim()
     ? baseData.filter(a => a.patients?.full_name?.toLowerCase().includes(search.toLowerCase()))
     : baseData
+  const displayData     = [...filteredData].sort((a, b) => {
+    const da = new Date(a.admission_date)
+    const db = new Date(b.admission_date)
+    return sortDir === "asc" ? da - db : db - da
+  })
 
   const tabs = [
     { key: "active",     label: "Active",     count: activeCases.length },
@@ -205,7 +211,7 @@ export default function Dashboard() {
       : a.accommodation === "semi_private" ? days * rates.semiPrivate : 0
     return total + days * rates.muhcs + addon
   }, 0)
-  const monthlyUsed = monthlyAdmissions.reduce((total, a) => {
+  const monthlyUsed = monthlyDischarged.reduce((total, a) => {
     return total + (balanceMap[a.id]?.used || 0)
   }, 0)
 
@@ -410,7 +416,21 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-black/[0.06] overflow-hidden">
           <div className="px-6 md:px-10 pt-6 md:pt-8 pb-0 border-b border-gray-100">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-[17px] md:text-[22px] font-semibold text-gray-900 tracking-tight">Patients</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-[17px] md:text-[22px] font-semibold text-gray-900 tracking-tight">Patients</h2>
+                <button
+                  onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+                  className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 active:scale-95 px-3 py-1.5 rounded-full transition"
+                >
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                    {sortDir === "asc"
+                      ? <path d="M12 5l7 14H5L12 5z" fill="currentColor"/>
+                      : <path d="M12 19L5 5h14L12 19z" fill="currentColor"/>
+                    }
+                  </svg>
+                  {sortDir === "asc" ? "Oldest first" : "Newest first"}
+                </button>
+              </div>
               {user?.role !== "viewer" && (
               <button
                 onClick={() => router.push("/patients/new")}
@@ -494,6 +514,9 @@ export default function Dashboard() {
                         <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DOD</th>
                       )}
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Days</th>
+                      {activeTab === "discharged" && (
+                        <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Hospital Bill</th>
+                      )}
                       {activeTab === "discharged" ? (
                         <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Claim</th>
                       ) : (
@@ -527,6 +550,9 @@ export default function Dashboard() {
                             <td className="py-4 text-gray-500">{formatDate(a.discharge_date)}</td>
                           )}
                           <td className="py-4 text-gray-500">{getDays(a)}d</td>
+                          {activeTab === "discharged" && (
+                            <td className="py-4 text-gray-500 tabular-nums">{b ? formatINR(b.used) : "—"}</td>
+                          )}
                           {activeTab === "discharged" ? (
                             <td className="py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(claim)}</td>
                           ) : (
@@ -566,7 +592,10 @@ export default function Dashboard() {
                         </div>
                         <div className="ml-4 flex items-center gap-2 shrink-0">
                           {activeTab === "discharged" ? (
-                            <span className="text-[13px] font-semibold text-emerald-600 tabular-nums">{formatINR(claim)}</span>
+                            <div className="text-right">
+                              <p className="text-[11px] text-gray-400 tabular-nums">{b ? formatINR(b.used) : "—"}</p>
+                              <p className="text-[13px] font-semibold text-emerald-600 tabular-nums">{formatINR(claim)}</p>
+                            </div>
                           ) : (
                             <StatusPill status={a.status} />
                           )}

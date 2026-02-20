@@ -898,10 +898,10 @@ export default function PatientDetailPage({ params }) {
                 admission.accommodation === "cabin" ? "Cabin" :
                 admission.accommodation === "semi_private" ? "Semi Private" : "General"
               } />
-              <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
+              <InfoItem label="Admitted" value={formatDate(admission.admission_date)} />
               <InfoItem
-                label="DOD"
-                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
+                label="Discharged"
+                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Still admitted"}
               />
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
             </div>
@@ -988,7 +988,7 @@ export default function PatientDetailPage({ params }) {
               <BillRow label="Lab" value={labTotal} />
               <BillRow label="X-Ray" value={xrayTotal} />
               <BillRow label="Pharmacy" value={pharmaTotal} />
-              <BillRow label="Counter (Nurse fee + Doctor round + Others)" value={counterTotal} />
+              <BillRow label="Counter" value={counterTotal} />
               <div className="pt-2.5 mt-1 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-gray-900">Total Hospital Bill</span>
                 <span className="text-[15px] md:text-[17px] font-semibold text-gray-900 tabular-nums">
