@@ -898,10 +898,10 @@ export default function PatientDetailPage({ params }) {
                 admission.accommodation === "cabin" ? "Cabin" :
                 admission.accommodation === "semi_private" ? "Semi Private" : "General"
               } />
-              <InfoItem label="Admitted" value={formatDate(admission.admission_date)} />
+              <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
               <InfoItem
-                label="Discharged"
-                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Still admitted"}
+                label="DOD"
+                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
               />
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
             </div>
