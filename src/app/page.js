@@ -514,6 +514,11 @@ export default function Dashboard() {
                         <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DOD</th>
                       )}
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Days</th>
+                      {activeTab === "active" && <>
+                        <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Allowed</th>
+                        <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Used</th>
+                        <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Remaining</th>
+                      </>}
                       {activeTab === "discharged" && (
                         <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Hospital Bill</th>
                       )}
@@ -530,6 +535,8 @@ export default function Dashboard() {
                       const pct = b && b.allowed > 0 ? Math.min((b.used / b.allowed) * 100, 100) : 0
                       const barColor = pct >= 95 ? "bg-red-400" : pct >= 80 ? "bg-amber-400" : "bg-emerald-400"
                       const claim = b ? b.allowed : 0
+                      const remaining = b ? b.allowed - b.used : 0
+                      const remainColor = remaining < 0 ? "text-red-600" : pct >= 80 ? "text-amber-600" : "text-emerald-600"
                       return (
                         <tr
                           key={a.id}
@@ -550,6 +557,11 @@ export default function Dashboard() {
                             <td className="py-4 text-gray-500">{formatDate(a.discharge_date)}</td>
                           )}
                           <td className="py-4 text-gray-500">{getDays(a)}d</td>
+                          {activeTab === "active" && <>
+                            <td className="py-4 text-gray-500 tabular-nums">{b ? formatINR(b.allowed) : "—"}</td>
+                            <td className="py-4 text-gray-500 tabular-nums">{b ? formatINR(b.used) : "—"}</td>
+                            <td className={`py-4 font-semibold tabular-nums ${remainColor}`}>{b ? formatINR(Math.abs(remaining)) : "—"}</td>
+                          </>}
                           {activeTab === "discharged" && (
                             <td className="py-4 text-gray-500 tabular-nums">{b ? formatINR(b.used) : "—"}</td>
                           )}
