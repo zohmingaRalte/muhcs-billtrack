@@ -136,7 +136,7 @@ function EntryRow({ entry, canEdit, onEdit, onDelete }) {
           {formatINR(entry.amount)}
         </span>
         {canEdit && (
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <button
               onClick={() => onEdit(entry)}
               className="text-[11px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition"
@@ -898,10 +898,10 @@ export default function PatientDetailPage({ params }) {
                 admission.accommodation === "cabin" ? "Cabin" :
                 admission.accommodation === "semi_private" ? "Semi Private" : "General"
               } />
-              <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
+              <InfoItem label="Admitted" value={formatDate(admission.admission_date)} />
               <InfoItem
-                label="DOD"
-                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
+                label="Discharged"
+                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Still admitted"}
               />
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
             </div>
@@ -1166,7 +1166,7 @@ function CounterSection({ bedFee, accommodation, days, bedRate, entries, admissi
                 {formatINR(entry.amount)}
               </span>
               {canEdit && (
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleEdit(entry)}
                     className="text-[11px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition"
