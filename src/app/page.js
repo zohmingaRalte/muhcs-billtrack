@@ -58,7 +58,9 @@ export default function Dashboard() {
   const [paymentError, setPaymentError]     = useState("")
   const [loading, setLoading]               = useState(true)
   const [search, setSearch]                 = useState("")
-  const [sortDir, setSortDir]               = useState("desc") // newest first by default
+  const [sortDir, setSortDir]               = useState("desc")
+  const [sortMode, setSortMode]             = useState("manual") // "manual" | "doa"
+  const [patientOrder, setPatientOrder]     = useState({}) // admission_id -> sort_order
 
   const now = new Date()
   const [summaryMonth, setSummaryMonth]     = useState(now.getMonth())
@@ -155,6 +157,12 @@ export default function Dashboard() {
     }
 
     setLoading(false)
+
+    // Fetch manual sort order for discharged patients
+    const { data: orderData } = await supabase.from("patient_order").select("admission_id, sort_order")
+    const orderMap = {}
+    ;(orderData || []).forEach(o => { orderMap[o.admission_id] = o.sort_order })
+    setPatientOrder(orderMap)
   }
 
   async function handlePasswordChange() {
@@ -181,13 +189,46 @@ export default function Dashboard() {
     setTimeout(() => { setShowPwModal(false); setPwSuccess("") }, 1500)
   }
 
+  async function movePatient(admissionId, direction) {
+    const discharged = admissions.filter(a => a.status === "discharged")
+    // Build current ordered list
+    const ordered = [...discharged].sort((a, b) => {
+      const oa = patientOrder[a.id] ?? 999999
+      const ob = patientOrder[b.id] ?? 999999
+      return oa - ob
+    })
+    const idx = ordered.findIndex(a => a.id === admissionId)
+    const swapIdx = direction === "up" ? idx - 1 : idx + 1
+    if (swapIdx < 0 || swapIdx >= ordered.length) return
+
+    const a = ordered[idx]
+    const b = ordered[swapIdx]
+    const orderA = patientOrder[a.id] ?? idx + 1
+    const orderB = patientOrder[b.id] ?? swapIdx + 1
+
+    // Swap orders in DB
+    await Promise.all([
+      supabase.from("patient_order").upsert({ admission_id: a.id, sort_order: orderB, updated_by: user?.id, updated_at: new Date().toISOString() }),
+      supabase.from("patient_order").upsert({ admission_id: b.id, sort_order: orderA, updated_by: user?.id, updated_at: new Date().toISOString() }),
+    ])
+
+    // Update local state
+    setPatientOrder(prev => ({ ...prev, [a.id]: orderB, [b.id]: orderA }))
+  }
+
   const activeCases     = admissions.filter(a => a.status === "admitted")
   const dischargedCases = admissions.filter(a => a.status === "discharged")
   const baseData        = activeTab === "active" ? activeCases : dischargedCases
   const filteredData    = search.trim()
     ? baseData.filter(a => a.patients?.full_name?.toLowerCase().includes(search.toLowerCase()))
     : baseData
+  const isAdminOrCounter = user?.role === "admin" || user?.role === "counter"
   const displayData     = [...filteredData].sort((a, b) => {
+    if (activeTab === "discharged" && isAdminOrCounter && sortMode === "manual") {
+      const oa = patientOrder[a.id] ?? 999999
+      const ob = patientOrder[b.id] ?? 999999
+      return oa - ob
+    }
     const da = new Date(a.admission_date)
     const db = new Date(b.admission_date)
     return sortDir === "asc" ? da - db : db - da
@@ -416,20 +457,49 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl md:rounded-2xl shadow-sm border border-black/[0.06] overflow-hidden">
           <div className="px-6 md:px-10 pt-6 md:pt-8 pb-0 border-b border-gray-100">
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="text-[17px] md:text-[22px] font-semibold text-gray-900 tracking-tight">Patients</h2>
-                <button
-                  onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
-                  className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 active:scale-95 px-3 py-1.5 rounded-full transition"
-                >
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                    {sortDir === "asc"
-                      ? <path d="M12 5l7 14H5L12 5z" fill="currentColor"/>
-                      : <path d="M12 19L5 5h14L12 19z" fill="currentColor"/>
-                    }
-                  </svg>
-                  {sortDir === "asc" ? "Oldest first" : "Newest first"}
-                </button>
+                {isAdminOrCounter && activeTab === "discharged" ? (
+                  /* Mode toggle for admin/counter on discharged tab */
+                  <div className="flex rounded-full border border-gray-200 overflow-hidden text-[12px] font-medium">
+                    <button
+                      onClick={() => setSortMode("manual")}
+                      className={`px-3 py-1.5 transition ${sortMode === "manual" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                    >
+                      Manual
+                    </button>
+                    <button
+                      onClick={() => setSortMode("doa")}
+                      className={`px-3 py-1.5 transition flex items-center gap-1 ${sortMode === "doa" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
+                    >
+                      DOA
+                      {sortMode === "doa" && (
+                        <span onClick={e => { e.stopPropagation(); setSortDir(d => d === "asc" ? "desc" : "asc") }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
+                            {sortDir === "asc"
+                              ? <path d="M12 5l7 14H5L12 5z" fill="currentColor"/>
+                              : <path d="M12 19L5 5h14L12 19z" fill="currentColor"/>
+                            }
+                          </svg>
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                ) : (
+                  /* DOA sort for everyone else */
+                  <button
+                    onClick={() => setSortDir(d => d === "asc" ? "desc" : "asc")}
+                    className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 active:scale-95 px-3 py-1.5 rounded-full transition"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                      {sortDir === "asc"
+                        ? <path d="M12 5l7 14H5L12 5z" fill="currentColor"/>
+                        : <path d="M12 19L5 5h14L12 19z" fill="currentColor"/>
+                      }
+                    </svg>
+                    {sortDir === "asc" ? "Oldest first" : "Newest first"}
+                  </button>
+                )}
               </div>
               {user?.role !== "viewer" && (
               <button
@@ -507,6 +577,9 @@ export default function Dashboard() {
                 <table className="hidden md:table w-full text-[15px] text-gray-900">
                   <thead>
                     <tr className="border-b border-gray-100">
+                      {isAdminOrCounter && activeTab === "discharged" && sortMode === "manual" && (
+                        <th className="py-5 w-16"></th>
+                      )}
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Name</th>
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Ward</th>
                       <th className="py-5 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DOA</th>
@@ -543,6 +616,28 @@ export default function Dashboard() {
                           onClick={() => router.push(`/patients/${a.id}`)}
                           className="hover:bg-gray-50 active:bg-gray-100 transition-colors duration-100 cursor-pointer group"
                         >
+                          {isAdminOrCounter && activeTab === "discharged" && sortMode === "manual" && (
+                            <td className="py-4 pr-3 w-16" onClick={e => e.stopPropagation()}>
+                              <input
+                                type="number"
+                                min="1"
+                                defaultValue={patientOrder[a.id] ?? ""}
+                                placeholder="#"
+                                className="w-12 text-center border border-gray-200 rounded-lg px-1 py-1.5 text-[13px] font-semibold text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+                                onBlur={async e => {
+                                  const val = Number(e.target.value)
+                                  if (!val || val < 1) return
+                                  await supabase.from("patient_order").upsert({
+                                    admission_id: a.id,
+                                    sort_order: val,
+                                    updated_by: user?.id,
+                                    updated_at: new Date().toISOString()
+                                  })
+                                  setPatientOrder(prev => ({ ...prev, [a.id]: val }))
+                                }}
+                              />
+                            </td>
+                          )}
                           <td className="py-4">
                             <p className="font-medium text-gray-900 group-hover:text-black">{a.patients?.full_name}</p>
                             {b && activeTab === "active" && (
