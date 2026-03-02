@@ -11,7 +11,7 @@ export const metadata = {
     title: "MUHCS Tracker",
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: "/favicon.png",
     apple: "/logo.jpg",
   },
 }
