@@ -178,7 +178,7 @@ function EntryForm({ dept, admissionId, userId, editTarget, onSave, onCancel }) 
       return setError("Enter a valid amount.")
 
     setSaving(true)
-    const table = dept === "lab" ? "lab_entries" : dept === "xray" ? "xray_entries" : "pharma_entries"
+    const table = dept === "lab" ? "lab_entries" : dept === "xray" ? "xray_entries" : dept === "ecg" ? "ecg_entries" : "pharma_entries"
 
     if (editTarget) {
       const { error: err } = await supabase
@@ -211,7 +211,7 @@ function EntryForm({ dept, admissionId, userId, editTarget, onSave, onCancel }) 
   return (
     <form onSubmit={handleSubmit} className="bg-gray-50 rounded-xl p-4 md:p-5 mt-3 space-y-3">
       <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest">
-        {editTarget ? "Edit Entry" : `Add ${dept === "lab" ? "Lab" : dept === "xray" ? "X-Ray" : "Pharma"} Entry`}
+        {editTarget ? "Edit Entry" : `Add ${dept === "lab" ? "Lab" : dept === "xray" ? "X-Ray" : dept === "ecg" ? "ECG" : "Pharma"} Entry`}
       </p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -265,7 +265,7 @@ function EntriesSection({ title, dept, entries, admissionId, userId, canAdd, can
   const total = entries.reduce((sum, e) => sum + Number(e.amount), 0)
 
   async function handleDelete(entry) {
-    const table = dept === "lab" ? "lab_entries" : dept === "xray" ? "xray_entries" : "pharma_entries"
+    const table = dept === "lab" ? "lab_entries" : dept === "xray" ? "xray_entries" : dept === "ecg" ? "ecg_entries" : "pharma_entries"
     if (!confirm(`Delete this entry (${formatINR(entry.amount)})?`)) return
     await supabase.from(table).delete().eq("id", entry.id)
     onRefresh()
@@ -361,6 +361,7 @@ export default function PatientDetailPage({ params }) {
   const [pharmaEntries, setPharmaEntries] = useState([])
   const [xrayEntries, setXrayEntries] = useState([])
   const [counterEntries, setCounterEntries] = useState([])
+  const [ecgEntries, setEcgEntries]         = useState([])
   const [rates, setRates] = useState({ muhcs: 0, cabin: 0, bed: 0 })
   const [loading, setLoading] = useState(true)
   const [showDischargeModal, setShowDischargeModal] = useState(false)
@@ -459,6 +460,15 @@ export default function PatientDetailPage({ params }) {
       .order("entry_date", { ascending: false })
 
     setCounterEntries(counter || [])
+
+    // ECG entries
+    const { data: ecg } = await supabase
+      .from("ecg_entries")
+      .select("*, users(name)")
+      .eq("admission_id", id)
+      .order("entry_date", { ascending: false })
+
+    setEcgEntries(ecg || [])
     setLoading(false)
   }
 
@@ -500,8 +510,12 @@ export default function PatientDetailPage({ params }) {
   const labTotal = labEntries.reduce((s, e) => s + Number(e.amount), 0)
   const pharmaTotal = pharmaEntries.reduce((s, e) => s + Number(e.amount), 0)
   const xrayTotal = xrayEntries.reduce((s, e) => s + Number(e.amount), 0)
+  const ecgTotal = ecgEntries.reduce((s, e) => s + Number(e.amount), 0)
   const counterTotal = counterEntries.reduce((s, e) => s + Number(e.amount), 0)
-  const entriesTotal = labTotal + pharmaTotal + xrayTotal + counterTotal
+  const nursingTotal = counterEntries.filter(e => e.charge_type === "nursing").reduce((s, e) => s + Number(e.amount), 0)
+  const doctorTotal = counterEntries.filter(e => e.charge_type === "consultation").reduce((s, e) => s + Number(e.amount), 0)
+  const othersTotal = counterEntries.filter(e => e.charge_type === "misc").reduce((s, e) => s + Number(e.amount), 0)
+  const entriesTotal = labTotal + pharmaTotal + xrayTotal + ecgTotal + counterTotal
   const hasOverride = admission.total_bill_override !== null && admission.total_bill_override !== undefined
   const totalUsed = hasOverride ? Number(admission.total_bill_override) : entriesTotal
 
@@ -517,15 +531,18 @@ export default function PatientDetailPage({ params }) {
   const canAddLab = isAdmin || isLab || isXray
   const canAddPharma = isAdmin || isPharma
   const canAddXray = isAdmin || isXray || isLab
+  const canAddEcg = isAdmin || isLab || isXray || isCounter
   const canAddCounter = isAdminOrCounter
   const canEditAny = isAdminOrCounter
   const canEditLab = isAdmin || isLab || isXray
   const canEditPharma = isAdmin || isPharma
   const canEditXray = isAdmin || isXray || isLab
+  const canEditEcg = isAdmin || isLab || isXray || isCounter
   const canEditCounter = isAdminOrCounter
   const showLab = isAdmin || isCounter || isLab || isXray || isViewer
   const showPharma = isAdmin || isCounter || isPharma || isViewer
   const showXray = isAdmin || isCounter || isXray || isLab || isViewer
+  const showEcg = !isViewer
   const showCounter = isAdminOrCounter || isViewer
 
   function startEdit() {
@@ -898,10 +915,10 @@ export default function PatientDetailPage({ params }) {
                 admission.accommodation === "cabin" ? "Cabin" :
                 admission.accommodation === "semi_private" ? "Semi Private" : "General"
               } />
-              <InfoItem label="Admitted" value={formatDate(admission.admission_date)} />
+              <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
               <InfoItem
-                label="Discharged"
-                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Still admitted"}
+                label="DOD"
+                value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
               />
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
             </div>
@@ -987,8 +1004,11 @@ export default function PatientDetailPage({ params }) {
             <div className="space-y-2.5">
               <BillRow label="Lab" value={labTotal} />
               <BillRow label="X-Ray" value={xrayTotal} />
+              <BillRow label="ECG" value={ecgTotal} />
               <BillRow label="Pharmacy" value={pharmaTotal} />
-              <BillRow label="Counter" value={counterTotal} />
+              <BillRow label="Nursing Fees" value={nursingTotal} />
+              <BillRow label="Doctor Round" value={doctorTotal} />
+              <BillRow label="Others" value={othersTotal} />
               <div className="pt-2.5 mt-1 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-gray-900">Total Hospital Bill</span>
                 <span className="text-[15px] md:text-[17px] font-semibold text-gray-900 tabular-nums">
@@ -1043,6 +1063,20 @@ export default function PatientDetailPage({ params }) {
           />
         )}
 
+        {/* ECG entries */}
+        {showEcg && (
+          <EntriesSection
+            title="ECG Entries"
+            dept="ecg"
+            entries={ecgEntries}
+            admissionId={Number(id)}
+            userId={user.id}
+            canAdd={canAddEcg && isActive}
+            canEdit={canEditEcg}
+            onRefresh={fetchAll}
+          />
+        )}
+
         {/* Pharma entries */}
         {showPharma && (
           <EntriesSection
@@ -1080,8 +1114,8 @@ export default function PatientDetailPage({ params }) {
 
 const CHARGE_TYPES = [
   { value: "nursing",      label: "Nursing Fees" },
-  { value: "consultation", label: "Consultation" },
-  { value: "misc",         label: "Miscellaneous" },
+  { value: "consultation", label: "Doctor Round" },
+  { value: "misc",         label: "Others" },
 ]
 
 function CounterSection({ bedFee, accommodation, days, bedRate, entries, admissionId, userId, canAdd, canEdit, onRefresh }) {

@@ -135,12 +135,13 @@ export default function Dashboard() {
 
     const admIds = (admissionData || []).map(a => a.id)
     if (admIds.length > 0) {
-      const [{ data: lab }, { data: pharma }, { data: xray }, { data: counter }] =
+      const [{ data: lab }, { data: pharma }, { data: xray }, { data: counter }, { data: ecg }] =
         await Promise.all([
           supabase.from("lab_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("pharma_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("xray_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("counter_entries").select("admission_id, amount").in("admission_id", admIds),
+          supabase.from("ecg_entries").select("admission_id, amount").in("admission_id", admIds),
         ])
 
       const map = {}
@@ -149,7 +150,7 @@ export default function Dashboard() {
         const allowed = days * muhcs + getWardAddon(a, days)
         const hasOverride = a.total_bill_override !== null && a.total_bill_override !== undefined
         const sum = (arr, id) => (arr || []).filter(e => e.admission_id === id).reduce((s, e) => s + Number(e.amount), 0)
-        const entriesTotal = sum(lab, a.id) + sum(pharma, a.id) + sum(xray, a.id) + sum(counter, a.id)
+        const entriesTotal = sum(lab, a.id) + sum(pharma, a.id) + sum(xray, a.id) + sum(counter, a.id) + sum(ecg, a.id)
         const used = hasOverride ? Number(a.total_bill_override) : entriesTotal
         map[a.id] = { used, allowed }
       })
@@ -187,33 +188,6 @@ export default function Dashboard() {
     setPwSaving(false)
     setOldPw(""); setNewPw(""); setConfirmPw("")
     setTimeout(() => { setShowPwModal(false); setPwSuccess("") }, 1500)
-  }
-
-  async function movePatient(admissionId, direction) {
-    const discharged = admissions.filter(a => a.status === "discharged")
-    // Build current ordered list
-    const ordered = [...discharged].sort((a, b) => {
-      const oa = patientOrder[a.id] ?? 999999
-      const ob = patientOrder[b.id] ?? 999999
-      return oa - ob
-    })
-    const idx = ordered.findIndex(a => a.id === admissionId)
-    const swapIdx = direction === "up" ? idx - 1 : idx + 1
-    if (swapIdx < 0 || swapIdx >= ordered.length) return
-
-    const a = ordered[idx]
-    const b = ordered[swapIdx]
-    const orderA = patientOrder[a.id] ?? idx + 1
-    const orderB = patientOrder[b.id] ?? swapIdx + 1
-
-    // Swap orders in DB
-    await Promise.all([
-      supabase.from("patient_order").upsert({ admission_id: a.id, sort_order: orderB, updated_by: user?.id, updated_at: new Date().toISOString() }),
-      supabase.from("patient_order").upsert({ admission_id: b.id, sort_order: orderA, updated_by: user?.id, updated_at: new Date().toISOString() }),
-    ])
-
-    // Update local state
-    setPatientOrder(prev => ({ ...prev, [a.id]: orderB, [b.id]: orderA }))
   }
 
   const activeCases     = admissions.filter(a => a.status === "admitted")
