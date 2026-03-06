@@ -215,11 +215,11 @@ export default function Dashboard() {
 
   const monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-  const monthlyAdmissions = admissions.filter(a => {
-    const d = new Date(a.admission_date)
+  const monthlyDischarged = admissions.filter(a => {
+    if (a.status !== "discharged" || !a.discharge_date) return false
+    const d = new Date(a.discharge_date)
     return d.getMonth() === summaryMonth && d.getFullYear() === summaryYear
   })
-  const monthlyDischarged = monthlyAdmissions.filter(a => a.status === "discharged")
   const monthlyClaim = monthlyDischarged.reduce((total, a) => {
     const days = calcDischarged(a.admission_date, a.discharge_date)
     const addon = a.accommodation === "cabin" ? days * rates.cabin
@@ -419,8 +419,7 @@ export default function Dashboard() {
               </select>
             </div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <SummaryItem label="Admissions"   value={monthlyAdmissions.length} />
+          <div className="grid grid-cols-3 gap-4">
             <SummaryItem label="Discharged"   value={monthlyDischarged.length} />
             <SummaryItem label="Total Billed" value={formatINR(monthlyUsed)} />
             <SummaryItem label="MUHCS Claim"  value={formatINR(monthlyClaim)} />
