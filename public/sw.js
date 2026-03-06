@@ -1,4 +1,4 @@
-const CACHE_NAME = "muhcs-v1"
+const CACHE_NAME = "muhcs-v2"
 const STATIC_ASSETS = [
   "/",
   "/login",
@@ -27,27 +27,52 @@ self.addEventListener("fetch", event => {
   const { request } = event
   const url = new URL(request.url)
 
-  // Don't cache Supabase API calls — always fetch fresh
+  // Never intercept Supabase API calls — always go to network
   if (url.hostname.includes("supabase")) {
     event.respondWith(fetch(request))
     return
   }
 
-  // For navigation requests — network first, fallback to cache
+  // Never intercept non-GET requests
+  if (request.method !== "GET") {
+    event.respondWith(fetch(request))
+    return
+  }
+
+  // For navigation requests — network first with short timeout, fallback to cache
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then(response => {
-          const clone = response.clone()
-          caches.open(CACHE_NAME).then(cache => cache.put(request, clone))
+      Promise.race([
+        fetch(request).then(response => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then(cache => cache.put(request, clone))
+          }
           return response
-        })
-        .catch(() => caches.match(request).then(r => r || caches.match("/")))
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000))
+      ]).catch(() => caches.match(request).then(r => r || caches.match("/")))
     )
     return
   }
 
-  // For static assets — cache first, fallback to network
+  // For Next.js chunk files — network first, cache as backup
+  if (url.pathname.startsWith("/_next/")) {
+    event.respondWith(
+      fetch(request)
+        .then(response => {
+          if (response.ok) {
+            const clone = response.clone()
+            caches.open(CACHE_NAME).then(cache => cache.put(request, clone))
+          }
+          return response
+        })
+        .catch(() => caches.match(request))
+    )
+    return
+  }
+
+  // For everything else — cache first, fallback to network
   event.respondWith(
     caches.match(request).then(cached => {
       if (cached) return cached
