@@ -51,7 +51,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab]           = useState("active")
   const [totalClaim, setTotalClaim]         = useState(0)
   const [totalReceived, setTotalReceived]   = useState(0)
+  const [paymentsList, setPaymentsList]     = useState([])
   const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [showPaymentsDetail, setShowPaymentsDetail] = useState(false)
   const [paymentAmount, setPaymentAmount]   = useState("")
   const [paymentDate, setPaymentDate]       = useState("")
   const [paymentSaving, setPaymentSaving]   = useState(false)
@@ -129,9 +131,10 @@ export default function Dashboard() {
     setTotalClaim(total)
 
     // Fetch total payments received
-    const { data: payments } = await supabase.from("payments").select("amount")
+    const { data: payments } = await supabase.from("payments").select("amount, payment_date").order("payment_date", { ascending: false })
     const received = (payments || []).reduce((s, p) => s + Number(p.amount), 0)
     setTotalReceived(received)
+    setPaymentsList(payments || [])
 
     const admIds = (admissionData || []).map(a => a.id)
     if (admIds.length > 0) {
@@ -295,6 +298,39 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* Payments detail modal */}
+      {showPaymentsDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setShowPaymentsDetail(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-[17px] font-semibold text-gray-900">Payments Received</h2>
+              <button onClick={() => setShowPaymentsDetail(false)} className="text-gray-400 hover:text-gray-700 transition">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                  <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            {paymentsList.length === 0 ? (
+              <p className="text-[14px] text-gray-400 text-center py-6">No payments recorded yet.</p>
+            ) : (
+              <div className="space-y-0 divide-y divide-gray-50 max-h-80 overflow-y-auto">
+                {paymentsList.map((p, i) => (
+                  <div key={i} className="flex items-center justify-between py-3">
+                    <p className="text-[13px] text-gray-500">{formatDate(p.payment_date)}</p>
+                    <p className="text-[14px] font-semibold text-emerald-600 tabular-nums">{formatINR(p.amount)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
+              <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest">Total</p>
+              <p className="text-[16px] font-semibold text-emerald-600 tabular-nums">{formatINR(totalReceived)}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Payment modal — admin only */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
@@ -395,6 +431,7 @@ export default function Dashboard() {
             received={loading ? null : totalReceived}
             isAdmin={user?.role === "admin"}
             onAdd={() => { setPaymentAmount(""); setPaymentDate(new Date().toISOString().split("T")[0]); setShowPaymentModal(true) }}
+            onViewDetails={() => setShowPaymentsDetail(true)}
           />
         </div>
 
@@ -708,10 +745,13 @@ export default function Dashboard() {
 
 // ─── SUB COMPONENTS ───────────────────────────────────────────────────────────
 
-function ClaimCard({ claim, received, isAdmin, onAdd }) {
+function ClaimCard({ claim, received, isAdmin, onAdd, onViewDetails }) {
   const pending = claim !== null && received !== null ? claim - received : null
   return (
-    <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-7 hover:shadow-md transition-shadow">
+    <div
+      onClick={onViewDetails}
+      className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-7 hover:shadow-md transition-shadow cursor-pointer"
+    >
       <div className="flex items-center justify-between mb-3 md:mb-4">
         <div className="flex items-center gap-1.5">
           <span className="inline-block h-1.5 w-1.5 rounded-full shrink-0 bg-amber-400" />
@@ -719,7 +759,7 @@ function ClaimCard({ claim, received, isAdmin, onAdd }) {
         </div>
         {isAdmin && (
           <button
-            onClick={onAdd}
+            onClick={e => { e.stopPropagation(); onAdd() }}
             className="h-5 w-5 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition active:scale-95"
             title="Add payment"
           >
