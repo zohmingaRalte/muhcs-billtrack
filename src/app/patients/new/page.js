@@ -220,6 +220,7 @@ export default function NewPatientPage() {
                 <div className="grid grid-cols-2 gap-3">
                   {[
                     { value: "general",      label: "General",      sub: `₹400 / day` },
+                    { value: "pedia",        label: "Pedia",        sub: `₹400 / day` },
                     { value: "semi_private", label: "Semi Private", sub: `₹800 / day` },
                     { value: "cabin",        label: "Cabin",        sub: `₹1,500 / day` },
                   ].map(opt => (

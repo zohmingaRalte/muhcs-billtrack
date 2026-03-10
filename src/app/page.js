@@ -656,7 +656,7 @@ export default function Dashboard() {
                               </div>
                             )}
                           </td>
-                          <td className="py-4 text-gray-500 capitalize">{a.accommodation === "semi_private" ? "Semi Private" : a.accommodation}</td>
+                          <td className="py-4 text-gray-500 capitalize">{a.accommodation === "semi_private" ? "Semi Private" : a.accommodation === "pedia" ? "Pedia" : a.accommodation}</td>
                           <td className="py-4 text-gray-500">{formatDate(a.admission_date)}</td>
                           {activeTab === "discharged" && (
                             <td className="py-4 text-gray-500">{formatDate(a.discharge_date)}</td>
@@ -702,7 +702,7 @@ export default function Dashboard() {
                             </div>
                           )}
                           <p className="text-[12px] text-gray-400 mt-1 capitalize">
-                            {a.accommodation === "semi_private" ? "Semi Private" : a.accommodation} · {formatDate(a.admission_date)}
+                            {a.accommodation === "semi_private" ? "Semi Private" : a.accommodation === "pedia" ? "Pedia" : a.accommodation} · {formatDate(a.admission_date)}
                             {activeTab === "discharged" && a.discharge_date ? ` → ${formatDate(a.discharge_date)}` : ""}
                             {" "}· {getDays(a)}d
                           </p>

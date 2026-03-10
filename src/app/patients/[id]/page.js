@@ -495,7 +495,7 @@ export default function PatientDetailPage({ params }) {
 
   const wardRate = admission.accommodation === "cabin" ? rates.cabin
     : admission.accommodation === "semi_private" ? rates.semiPrivate
-    : rates.bed
+    : rates.bed // general and pedia both use bed rate
 
   const cabinAddon = admission.accommodation !== "general" ? days * wardRate : 0
   const totalAllowed = baseAllowed + cabinAddon
@@ -854,11 +854,12 @@ export default function PatientDetailPage({ params }) {
               </div>
 
               <EditField label="Ward Type">
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     {[
-                      { value: "general",     label: "General",     sub: "₹400/day" },
+                      { value: "general",      label: "General",      sub: "₹400/day" },
+                      { value: "pedia",        label: "Pedia",        sub: "₹400/day" },
                       { value: "semi_private", label: "Semi Private", sub: "₹800/day" },
-                      { value: "cabin",       label: "Cabin",       sub: "₹1,500/day" },
+                      { value: "cabin",        label: "Cabin",        sub: "₹1,500/day" },
                     ].map(opt => (
                       <button
                         key={opt.value}
@@ -913,7 +914,8 @@ export default function PatientDetailPage({ params }) {
               <InfoItem label="Contact" value={admission.patients?.contact || "—"} />
               <InfoItem label="Ward" value={
                 admission.accommodation === "cabin" ? "Cabin" :
-                admission.accommodation === "semi_private" ? "Semi Private" : "General"
+                admission.accommodation === "semi_private" ? "Semi Private" :
+                admission.accommodation === "pedia" ? "Pedia" : "General"
               } />
               <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
               <InfoItem
