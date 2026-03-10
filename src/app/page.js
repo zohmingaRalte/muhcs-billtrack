@@ -60,6 +60,7 @@ export default function Dashboard() {
   const [paymentError, setPaymentError]     = useState("")
   const [loading, setLoading]               = useState(true)
   const [search, setSearch]                 = useState("")
+  const [wardFilter, setWardFilter]         = useState("all")
   const [sortDir, setSortDir]               = useState("desc")
   const [sortMode, setSortMode]             = useState("manual") // "manual" | "doa"
   const [patientOrder, setPatientOrder]     = useState({}) // admission_id -> sort_order
@@ -196,9 +197,9 @@ export default function Dashboard() {
   const activeCases     = admissions.filter(a => a.status === "admitted")
   const dischargedCases = admissions.filter(a => a.status === "discharged")
   const baseData        = activeTab === "active" ? activeCases : dischargedCases
-  const filteredData    = search.trim()
-    ? baseData.filter(a => a.patients?.full_name?.toLowerCase().includes(search.toLowerCase()))
-    : baseData
+  const filteredData    = baseData
+    .filter(a => search.trim() ? a.patients?.full_name?.toLowerCase().includes(search.toLowerCase()) : true)
+    .filter(a => wardFilter !== "all" ? a.accommodation === wardFilter : true)
   const isAdminOrCounter = user?.role === "admin" || user?.role === "counter"
   const displayData     = [...filteredData].sort((a, b) => {
     if (activeTab === "discharged" && isAdminOrCounter && sortMode === "manual") {
@@ -547,6 +548,29 @@ export default function Dashboard() {
                   </svg>
                 </button>
               )}
+            </div>
+
+            {/* Ward filter pills */}
+            <div className="flex items-center gap-2 flex-wrap mb-5">
+              {[
+                { value: "all",         label: "All" },
+                { value: "general",     label: "General" },
+                { value: "pedia",       label: "Pedia" },
+                { value: "semi_private",label: "Semi Private" },
+                { value: "cabin",       label: "Cabin" },
+              ].map(w => (
+                <button
+                  key={w.value}
+                  onClick={() => setWardFilter(w.value)}
+                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
+                    wardFilter === w.value
+                      ? "bg-gray-900 text-white"
+                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  {w.label}
+                </button>
+              ))}
             </div>
 
             {/* Tabs */}
