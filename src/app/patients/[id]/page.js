@@ -497,12 +497,14 @@ export default function PatientDetailPage({ params }) {
     : admission.accommodation === "semi_private" ? rates.semiPrivate
     : rates.bed // general and pedia both use bed rate
 
-  const cabinAddon = admission.accommodation !== "general" ? days * wardRate : 0
+  const hasWardAddon = admission.accommodation === "cabin" || admission.accommodation === "semi_private"
+
+  const cabinAddon = hasWardAddon ? days * wardRate : 0
   const totalAllowed = baseAllowed + cabinAddon
 
   // Alert allowed: for active patients use one day less (min 1) to warn earlier
   const alertDays = isActive ? Math.max(days - 1, 1) : days
-  const alertAllowed = alertDays * rates.muhcs + (admission.accommodation !== "general" ? alertDays * wardRate : 0)
+  const alertAllowed = alertDays * rates.muhcs + (hasWardAddon ? alertDays * wardRate : 0)
 
   // Bed fee
   const bedFee = days * wardRate
@@ -1172,7 +1174,7 @@ function CounterSection({ bedFee, accommodation, days, bedRate, entries, admissi
         <div className="flex items-center justify-between py-3.5 border-b border-gray-50">
           <div>
             <p className="text-[14px] md:text-[15px] font-medium text-gray-900">
-              {accommodation === "cabin" ? "Cabin / Bed Fees" : "Bed Fees"}
+              {accommodation === "cabin" ? "Cabin / Bed Fees" : accommodation === "pedia" ? "Pedia Bed Fees" : "Bed Fees"}
             </p>
             <p className="text-[11px] text-gray-400 mt-0.5">
               {days}d × {formatINR(bedRate)} · Auto-calculated

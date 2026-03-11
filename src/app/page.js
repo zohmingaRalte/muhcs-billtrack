@@ -121,7 +121,7 @@ export default function Dashboard() {
     const getWardAddon = (a, days) => {
       if (a.accommodation === "cabin") return days * cabin
       if (a.accommodation === "semi_private") return days * semiPrivate
-      return 0
+      return 0 // general and pedia have no addon
     }
 
     let total = 0
