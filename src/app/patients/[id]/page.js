@@ -547,15 +547,18 @@ export default function PatientDetailPage({ params }) {
   // Bed fee
   const bedFee = days * wardRate
 
+  const MISC_RATE = 150
   const labTotal = labEntries.reduce((s, e) => s + Number(e.amount), 0)
   const pharmaTotal = pharmaEntries.reduce((s, e) => s + Number(e.amount), 0)
   const xrayTotal = xrayEntries.reduce((s, e) => s + Number(e.amount), 0)
   const ecgTotal = ecgEntries.reduce((s, e) => s + Number(e.amount), 0)
+  const miscTotal = days * MISC_RATE
+  // counter excludes misc entries (now auto-calculated)
+  const counterEntryTotal = counterEntries.filter(e => e.charge_type !== "misc").reduce((s, e) => s + Number(e.amount), 0)
   const counterTotal = counterEntries.reduce((s, e) => s + Number(e.amount), 0)
   const nursingTotal = counterEntries.filter(e => e.charge_type === "nursing").reduce((s, e) => s + Number(e.amount), 0)
   const doctorTotal = counterEntries.filter(e => e.charge_type === "consultation").reduce((s, e) => s + Number(e.amount), 0)
-  const othersTotal = counterEntries.filter(e => e.charge_type === "misc").reduce((s, e) => s + Number(e.amount), 0)
-  const entriesTotal = labTotal + pharmaTotal + xrayTotal + ecgTotal + counterTotal
+  const entriesTotal = labTotal + pharmaTotal + xrayTotal + ecgTotal + counterEntryTotal + miscTotal
   const hasOverride = admission.total_bill_override !== null && admission.total_bill_override !== undefined
   const totalUsed = hasOverride ? Number(admission.total_bill_override) : entriesTotal
 
@@ -1081,7 +1084,7 @@ export default function PatientDetailPage({ params }) {
               <BillRow label="Pharmacy" value={pharmaTotal} />
               <BillRow label="Nursing Fees" value={nursingTotal} />
               <BillRow label="Doctor Round" value={doctorTotal} />
-              <BillRow label="Others" value={othersTotal} />
+              <BillRow label={`Miscellaneous (₹150 × ${days}d)`} value={miscTotal} />
               <div className="pt-2.5 mt-1 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-gray-900">Total Hospital Bill</span>
                 <span className="text-[15px] md:text-[17px] font-semibold text-gray-900 tabular-nums">
@@ -1188,7 +1191,6 @@ export default function PatientDetailPage({ params }) {
 const CHARGE_TYPES = [
   { value: "nursing",      label: "Nursing Fees" },
   { value: "consultation", label: "Doctor Round" },
-  { value: "misc",         label: "Others" },
 ]
 
 function CounterSection({ bedFee, accommodation, days, bedRate, entries, admissionId, userId, canAdd, canEdit, onRefresh }) {
@@ -1302,6 +1304,7 @@ function CounterSection({ bedFee, accommodation, days, bedRate, entries, admissi
             admissionId={admissionId}
             userId={userId}
             editTarget={editTarget}
+            days={days}
             onSave={handleSaved}
             onCancel={() => { setShowForm(false); setEditTarget(null) }}
           />
@@ -1319,7 +1322,8 @@ function CounterSection({ bedFee, accommodation, days, bedRate, entries, admissi
   )
 }
 
-function CounterEntryForm({ admissionId, userId, editTarget, onSave, onCancel }) {
+function CounterEntryForm({ admissionId, userId, editTarget, days, onSave, onCancel }) {
+  const MISC_RATE = 150
   const [chargeType, setChargeType] = useState(editTarget?.charge_type || "nursing")
   const [amount, setAmount] = useState(editTarget?.amount?.toString() || "")
   const [entryDate, setEntryDate] = useState(
@@ -1328,10 +1332,23 @@ function CounterEntryForm({ admissionId, userId, editTarget, onSave, onCancel })
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState("")
 
+  function handleChargeTypeChange(val) {
+    setChargeType(val)
+    if (val === "misc" && !editTarget) {
+      setAmount(String(days * MISC_RATE))
+    } else if (val !== "misc") {
+      if (chargeType === "misc") setAmount("")
+    }
+  }
+
+  const isMisc = chargeType === "misc"
+  const miscAmount = days * MISC_RATE
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError("")
-    if (!amount || isNaN(amount) || Number(amount) <= 0) return setError("Enter a valid amount.")
+    const finalAmount = isMisc ? miscAmount : Number(amount)
+    if (!isMisc && (!amount || isNaN(amount) || Number(amount) <= 0)) return setError("Enter a valid amount.")
 
     setSaving(true)
     if (editTarget) {
@@ -1339,7 +1356,7 @@ function CounterEntryForm({ admissionId, userId, editTarget, onSave, onCancel })
         .from("counter_entries")
         .update({
           charge_type: chargeType,
-          amount: Number(amount),
+          amount: finalAmount,
           entry_date: entryDate,
           updated_at: new Date().toISOString(),
         })
@@ -1351,7 +1368,7 @@ function CounterEntryForm({ admissionId, userId, editTarget, onSave, onCancel })
         .insert({
           admission_id: admissionId,
           charge_type: chargeType,
-          amount: Number(amount),
+          amount: finalAmount,
           entry_date: entryDate,
           created_by: userId,
         })
@@ -1373,7 +1390,7 @@ function CounterEntryForm({ admissionId, userId, editTarget, onSave, onCancel })
           <button
             key={ct.value}
             type="button"
-            onClick={() => setChargeType(ct.value)}
+            onClick={() => handleChargeTypeChange(ct.value)}
             className={`flex-1 py-2 text-[12px] font-semibold rounded-xl transition ${
               chargeType === ct.value
                 ? "bg-gray-900 text-white"
@@ -1386,15 +1403,22 @@ function CounterEntryForm({ admissionId, userId, editTarget, onSave, onCancel })
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <input
-          type="number"
-          placeholder="Amount (₹)"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-          min="0"
-          step="0.01"
-          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
-        />
+        {isMisc ? (
+          <div className="w-full bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 flex items-center justify-between">
+            <span className="text-[14px] font-semibold text-gray-700 tabular-nums">{formatINR(miscAmount)}</span>
+            <span className="text-[11px] text-gray-400">₹150 × {days}d</span>
+          </div>
+        ) : (
+          <input
+            type="number"
+            placeholder="Amount (₹)"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            min="0"
+            step="0.01"
+            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+          />
+        )}
         <input
           type="date"
           value={entryDate}
