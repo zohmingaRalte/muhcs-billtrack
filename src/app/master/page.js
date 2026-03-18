@@ -507,22 +507,42 @@ export default function MasterDashboard() {
 
           {/* Category filter */}
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setCatFilter("all")}
-              className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition ${catFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
-            >All Categories</button>
-            {CATEGORIES.map(c => (
-              <button
-                key={c.value}
-                onClick={() => setCatFilter(c.value)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
-                  catFilter === c.value ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                }`}
-              >
-                <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${CATEGORY_DOT[c.color]}`} />
-                {c.label}
-              </button>
-            ))}
+            {(() => {
+              const allCount = records.filter(r => {
+                if (statusFilter !== "all" && r.claimStatus !== statusFilter) return false
+                return true
+              }).length
+              return (
+                <button
+                  onClick={() => setCatFilter("all")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${catFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                >
+                  All
+                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${catFilter === "all" ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{allCount}</span>
+                </button>
+              )
+            })()}
+            {CATEGORIES.map(c => {
+              const count = records.filter(r => {
+                if (r.patients?.category !== c.value) return false
+                if (statusFilter !== "all" && r.claimStatus !== statusFilter) return false
+                return true
+              }).length
+              if (count === 0) return null
+              return (
+                <button
+                  key={c.value}
+                  onClick={() => setCatFilter(c.value)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
+                    catFilter === c.value ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                  }`}
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${CATEGORY_DOT[c.color]}`} />
+                  {c.label}
+                  <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${catFilter === c.value ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{count}</span>
+                </button>
+              )
+            })}
           </div>
         </div>
 
@@ -555,11 +575,10 @@ export default function MasterDashboard() {
           ) : (
             <>
               {/* Desktop */}
-              <div className="hidden md:block overflow-x-auto">
-              <table className="w-full text-[13px]">
+              <table className="hidden md:table w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {["#","Patient","Category","DOD","Ward","Hospital Bill","MUHCS Claim","Received","Pending","Status",""].map(h => (
+                    {["#","Patient","Category","DOD","Ward","Hospital Bill","MUHCS Claim","Received","Pending","Status"].map(h => (
                       <th key={h} className="px-4 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest whitespace-nowrap first:pl-6 last:pr-6">{h}</th>
                     ))}
                   </tr>
@@ -569,42 +588,39 @@ export default function MasterDashboard() {
                     const pending = (r.claim || 0) - r.received
                     const catColor = CATEGORY_COLOR[r.patients?.category]
                     const dotColor = catColor ? CATEGORY_DOT[catColor] : null
-                    const s = STATUS_STYLES[r.claimStatus]
+                    const s = STATUS_STYLES[r.claimStatus] || STATUS_STYLES.pending
                     return (
-                      <tr key={r.id} className="hover:bg-gray-50 transition-colors group">
-                        <td className="pl-6 pr-2 py-4 text-[12px] font-semibold text-gray-300 tabular-nums w-8">{idx + 1}</td>
+                      <tr
+                        key={r.id}
+                        onClick={() => openEdit(r)}
+                        className="hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
+                      >
+                        <td className="pl-6 pr-2 py-4 text-[12px] font-semibold text-gray-300 tabular-nums">{idx + 1}</td>
                         <td className="px-4 py-4">
                           <div className="flex items-center gap-2">
                             {dotColor && <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />}
-                            <span className="font-medium text-gray-900 whitespace-nowrap">{r.patients?.full_name}</span>
+                            <span className="font-medium text-gray-900">{r.patients?.full_name}</span>
                           </div>
                         </td>
-                        <td className="px-4 py-4 text-gray-500 whitespace-nowrap">{r.patients?.category || "—"}</td>
+                        <td className="px-4 py-4 text-gray-500">{r.patients?.category || "—"}</td>
                         <td className="px-4 py-4 text-gray-500 whitespace-nowrap">{formatDate(r.discharge_date)}</td>
                         <td className="px-4 py-4 text-gray-500 capitalize whitespace-nowrap">
                           {r.accommodation === "semi_private" ? "Semi Private" : r.accommodation === "pedia" ? "Pedia" : r.accommodation}
                         </td>
-                        <td className="px-4 py-4 tabular-nums text-gray-700 whitespace-nowrap">{formatINR(r.hospitalBill)}</td>
-                        <td className="px-4 py-4 tabular-nums font-semibold text-gray-900 whitespace-nowrap">{formatINR(r.claim)}</td>
-                        <td className="px-4 py-4 tabular-nums text-emerald-600 font-semibold whitespace-nowrap">{r.received > 0 ? formatINR(r.received) : "—"}</td>
-                        <td className={`px-4 py-4 tabular-nums font-semibold whitespace-nowrap ${pending > 0 ? "text-red-500" : "text-gray-400"}`}>
+                        <td className="px-4 py-4 tabular-nums text-gray-700">{formatINR(r.hospitalBill)}</td>
+                        <td className="px-4 py-4 tabular-nums font-semibold text-gray-900">{formatINR(r.claim)}</td>
+                        <td className="px-4 py-4 tabular-nums text-emerald-600 font-semibold">{r.received > 0 ? formatINR(r.received) : "—"}</td>
+                        <td className={`px-4 py-4 tabular-nums font-semibold ${pending > 0 ? "text-red-500" : "text-gray-400"}`}>
                           {pending > 0 ? formatINR(pending) : "—"}
                         </td>
-                        <td className="px-4 py-4">
+                        <td className="px-4 py-4 pr-6">
                           <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full whitespace-nowrap ${s.class}`}>{s.label}</span>
-                        </td>
-                        <td className="pr-6 pl-2 py-4">
-                          <button
-                            onClick={() => openEdit(r)}
-                            className="text-[12px] font-medium text-gray-400 hover:text-gray-900 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition whitespace-nowrap opacity-0 group-hover:opacity-100"
-                          >Update</button>
                         </td>
                       </tr>
                     )
                   })}
                 </tbody>
               </table>
-              </div>
 
               {/* Mobile */}
               <div className="md:hidden divide-y divide-gray-50">
@@ -612,11 +628,14 @@ export default function MasterDashboard() {
                   const pending = (r.claim || 0) - r.received
                   const catColor = CATEGORY_COLOR[r.patients?.category]
                   const dotColor = catColor ? CATEGORY_DOT[catColor] : null
-                  const s = STATUS_STYLES[r.claimStatus]
+                  const s = STATUS_STYLES[r.claimStatus] || STATUS_STYLES.pending
                   return (
-                    <div key={r.id} className="px-5 py-4">
+                    <div
+                      key={r.id}
+                      onClick={() => openEdit(r)}
+                      className="px-5 py-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                    >
                       <div className="flex items-start gap-3">
-                        {/* S/No */}
                         <span className="text-[12px] font-semibold text-gray-300 tabular-nums pt-0.5 w-5 shrink-0">{idx + 1}</span>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
@@ -645,10 +664,6 @@ export default function MasterDashboard() {
                               </div>
                             )}
                           </div>
-                          <button
-                            onClick={() => openEdit(r)}
-                            className="mt-3 text-[12px] font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition"
-                          >Update</button>
                         </div>
                       </div>
                     </div>
