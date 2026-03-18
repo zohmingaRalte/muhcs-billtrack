@@ -11,19 +11,24 @@ export const metadata = {
     title: "MUHCS Tracker",
   },
   icons: {
-    icon: "/favicon.png",
+    icon: "/favicon.ico",
     apple: "/logo.jpg",
   },
 }
 
 export const viewport = {
   themeColor: "#111827",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

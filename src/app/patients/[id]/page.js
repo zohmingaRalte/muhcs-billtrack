@@ -8,6 +8,43 @@ import AuthGuard from "@/app/context/AuthGuard"
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
+const CATEGORIES = [
+  { value: "PMJAY",                   label: "PMJAY",                   color: "black"  },
+  { value: "Govt Employee",           label: "Govt Employee",           color: "green"  },
+  { value: "Provisional Employee",    label: "Provisional Employee",    color: "green"  },
+  { value: "Pensioner A",             label: "Pensioner A",             color: "red"    },
+  { value: "Pensioner B",             label: "Pensioner B",             color: "red"    },
+  { value: "Contributory General",    label: "Contributory General",    color: "yellow" },
+  { value: "Contributory Standard",   label: "Contributory Standard",   color: "yellow" },
+  { value: "Contributory Private",    label: "Contributory Private",    color: "yellow" },
+  { value: "CSS",                     label: "CSS",                     color: "purple" },
+  { value: "GIA MR",                  label: "GIA MR",                  color: "blue"   },
+  { value: "GIA Non MR",              label: "GIA Non MR",              color: "blue"   },
+]
+
+const CATEGORY_BORDER = {
+  black:  "border-l-gray-800",
+  green:  "border-l-emerald-500",
+  red:    "border-l-red-500",
+  yellow: "border-l-amber-400",
+  purple: "border-l-purple-500",
+  blue:   "border-l-blue-500",
+}
+
+const CATEGORY_DOT = {
+  black:  "bg-gray-800",
+  green:  "bg-emerald-500",
+  red:    "bg-red-500",
+  yellow: "bg-amber-400",
+  purple: "bg-purple-500",
+  blue:   "bg-blue-500",
+}
+
+function getCategoryColor(category) {
+  return CATEGORIES.find(c => c.value === category)?.color || null
+}
+
+
 function calcDays(admissionDate, dischargeDate) {
   const s = new Date(admissionDate)
   s.setHours(0, 0, 0, 0)
@@ -376,6 +413,7 @@ export default function PatientDetailPage({ params }) {
   const [editAgeUnit, setEditAgeUnit] = useState("years")
   const [editGender, setEditGender] = useState("male")
   const [editContact, setEditContact] = useState("")
+  const [editCategory, setEditCategory] = useState("")
   const [editAdmissionDate, setEditAdmissionDate] = useState("")
   const [editAccommodation, setEditAccommodation] = useState("general")
   const [editSaving, setEditSaving] = useState(false)
@@ -405,7 +443,7 @@ export default function PatientDetailPage({ params }) {
         accommodation,
         status,
         total_bill_override,
-        patients (full_name, gender, age, age_unit, contact)
+        patients (full_name, gender, age, age_unit, contact, category)
       `)
       .eq("id", id)
       .single()
@@ -553,6 +591,7 @@ export default function PatientDetailPage({ params }) {
     setEditAgeUnit(admission.patients?.age_unit || "years")
     setEditGender(admission.patients?.gender || "male")
     setEditContact(admission.patients?.contact || "")
+    setEditCategory(admission.patients?.category || "")
     setEditAdmissionDate(admission.admission_date || "")
     setEditAccommodation(admission.accommodation || "general")
     setEditError("")
@@ -575,6 +614,7 @@ export default function PatientDetailPage({ params }) {
         age_unit: editAgeUnit,
         gender: editGender,
         contact: editContact.trim() || null,
+        category: editCategory || null,
       })
       .eq("id", admission.patient_id)
 
@@ -762,11 +802,23 @@ export default function PatientDetailPage({ params }) {
       <main className="max-w-7xl mx-auto px-5 md:px-14 py-8 md:py-12 space-y-4 md:space-y-6">
 
         {/* Patient info card */}
-        <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-5 md:py-6">
+        {(() => {
+          const catColor = getCategoryColor(admission.patients?.category)
+          const borderClass = catColor ? `border-l-4 ${CATEGORY_BORDER[catColor]}` : ""
+          return (
+        <div className={`bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-5 md:py-6 ${borderClass}`}>
           <div className="flex items-center justify-between mb-5">
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
-              Patient Info
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
+                Patient Info
+              </p>
+              {admission.patients?.category && catColor && (
+                <div className="flex items-center gap-1.5">
+                  <span className={`h-2 w-2 rounded-full shrink-0 ${CATEGORY_DOT[catColor]}`} />
+                  <span className="text-[11px] font-semibold text-gray-500">{admission.patients.category}</span>
+                </div>
+              )}
+            </div>
             {isAdminOrCounter && !editing && (
               <button
                 onClick={startEdit}
@@ -844,6 +896,18 @@ export default function PatientDetailPage({ params }) {
                     onChange={e => setEditContact(e.target.value)}
                     className={editInputClass()}
                   />
+                </EditField>
+                <EditField label="Category">
+                  <select
+                    value={editCategory}
+                    onChange={e => setEditCategory(e.target.value)}
+                    className={editInputClass()}
+                  >
+                    <option value="">— Select category —</option>
+                    {CATEGORIES.map(c => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
                 </EditField>
                 <EditField label="Admission Date" required>
                   <input
@@ -925,9 +989,14 @@ export default function PatientDetailPage({ params }) {
                 value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
               />
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
+              {admission.patients?.category && (
+                <InfoItem label="Category" value={admission.patients.category} />
+              )}
             </div>
           )}
         </div>
+          )
+        })()}
 
         {/* Balance card */}
         <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} />

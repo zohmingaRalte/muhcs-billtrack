@@ -38,6 +38,29 @@ function formatINR(n) {
   return `₹${Number(n).toLocaleString("en-IN")}`
 }
 
+const CATEGORY_DOT = {
+  black:  "bg-gray-800",
+  green:  "bg-emerald-500",
+  red:    "bg-red-500",
+  yellow: "bg-amber-400",
+  purple: "bg-purple-500",
+  blue:   "bg-blue-500",
+}
+
+const CATEGORY_COLOR = {
+  "PMJAY":                 "black",
+  "Govt Employee":         "green",
+  "Provisional Employee":  "green",
+  "Pensioner A":           "red",
+  "Pensioner B":           "red",
+  "Contributory General":  "yellow",
+  "Contributory Standard": "yellow",
+  "Contributory Private":  "yellow",
+  "CSS":                   "purple",
+  "GIA MR":                "blue",
+  "GIA Non MR":            "blue",
+}
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -109,7 +132,7 @@ export default function Dashboard() {
 
     const { data: admissionData } = await supabase
       .from("admissions")
-      .select(`id, admission_date, discharge_date, accommodation, status, total_bill_override, patients(full_name)`)
+      .select(`id, admission_date, discharge_date, accommodation, status, total_bill_override, patients(full_name, category)`)
     setAdmissions(admissionData || [])
 
     const { data: ratesData } = await supabase.from("rate_master").select("*")
@@ -673,7 +696,13 @@ export default function Dashboard() {
                             </td>
                           )}
                           <td className="py-4">
-                            <p className="font-medium text-gray-900 group-hover:text-black">{a.patients?.full_name}</p>
+                            <div className="flex items-center gap-2">
+                              {a.patients?.category && (() => {
+                                const col = CATEGORY_DOT[CATEGORY_COLOR[a.patients.category]]
+                                return <span className={`h-2 w-2 rounded-full shrink-0 ${col}`} />
+                              })()}
+                              <p className="font-medium text-gray-900 group-hover:text-black">{a.patients?.full_name}</p>
+                            </div>
                             {b && activeTab === "active" && (
                               <div className="mt-1.5 h-1 w-24 bg-gray-100 rounded-full overflow-hidden">
                                 <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />
@@ -719,7 +748,13 @@ export default function Dashboard() {
                         className="py-4 flex items-center justify-between cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors rounded-xl -mx-2 px-2"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-[15px] text-gray-900 truncate">{a.patients?.full_name}</p>
+                          <div className="flex items-center gap-2">
+                            {a.patients?.category && (() => {
+                              const col = CATEGORY_DOT[CATEGORY_COLOR[a.patients.category]]
+                              return <span className={`h-2 w-2 rounded-full shrink-0 ${col}`} />
+                            })()}
+                            <p className="font-semibold text-[15px] text-gray-900 truncate">{a.patients?.full_name}</p>
+                          </div>
                           {b && activeTab === "active" && (
                             <div className="mt-1 h-1 w-20 bg-gray-100 rounded-full overflow-hidden">
                               <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${pct}%` }} />

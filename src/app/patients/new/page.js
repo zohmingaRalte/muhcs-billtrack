@@ -6,6 +6,20 @@ import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/app/context/UserContext"
 import AuthGuard from "@/app/context/AuthGuard"
 
+const CATEGORIES = [
+  { value: "PMJAY",                   label: "PMJAY",                   color: "black"  },
+  { value: "Govt Employee",           label: "Govt Employee",           color: "green"  },
+  { value: "Provisional Employee",    label: "Provisional Employee",    color: "green"  },
+  { value: "Pensioner A",             label: "Pensioner A",             color: "red"    },
+  { value: "Pensioner B",             label: "Pensioner B",             color: "red"    },
+  { value: "Contributory General",    label: "Contributory General",    color: "yellow" },
+  { value: "Contributory Standard",   label: "Contributory Standard",   color: "yellow" },
+  { value: "Contributory Private",    label: "Contributory Private",    color: "yellow" },
+  { value: "CSS",                     label: "CSS",                     color: "purple" },
+  { value: "GIA MR",                  label: "GIA MR",                  color: "blue"   },
+  { value: "GIA Non MR",              label: "GIA Non MR",              color: "blue"   },
+]
+
 export default function NewPatientPage() {
   const router = useRouter()
   const { user } = useUser()
@@ -16,6 +30,7 @@ export default function NewPatientPage() {
   const [ageUnit, setAgeUnit] = useState("years")
   const [gender, setGender] = useState("male")
   const [contact, setContact] = useState("")
+  const [category, setCategory] = useState("")
 
   // Admission fields
   const [admissionDate, setAdmissionDate] = useState("")
@@ -50,6 +65,7 @@ export default function NewPatientPage() {
         age_unit: ageUnit,
         gender,
         contact: contact.trim() || null,
+        category: category || null,
       })
       .select()
       .single()
@@ -196,6 +212,19 @@ export default function NewPatientPage() {
                   onChange={e => setContact(e.target.value)}
                   className={inputClass()}
                 />
+              </Field>
+
+              <Field label="Category">
+                <select
+                  value={category}
+                  onChange={e => setCategory(e.target.value)}
+                  className={inputClass()}
+                >
+                  <option value="">— Select category —</option>
+                  {CATEGORIES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
               </Field>
             </div>
           </div>
