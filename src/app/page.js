@@ -432,6 +432,12 @@ export default function Dashboard() {
                     onClick={() => { setShowAvatarMenu(false); setShowPwModal(true) }}
                     className="w-full text-left px-4 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition"
                   >Change Password</button>
+                  {user?.role === "admin" && (
+                    <button
+                      onClick={() => { setShowAvatarMenu(false); router.push("/master") }}
+                      className="w-full text-left px-4 py-2.5 text-[13px] text-gray-700 hover:bg-gray-50 active:bg-gray-100 transition"
+                    >Master Dashboard</button>
+                  )}
                   <button
                     onClick={() => { logout(); router.push("/login") }}
                     className="w-full text-left px-4 py-2.5 text-[13px] text-red-500 hover:bg-red-50 active:bg-red-100 transition"
