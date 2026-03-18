@@ -491,17 +491,20 @@ export default function MasterDashboard() {
           {/* Status filter */}
           <div className="flex flex-wrap gap-2">
             {[
-              { value: "all",     label: "All Status" },
-              { value: "pending", label: "Pending"    },
-              { value: "settled", label: "Settled"    },
+              { value: "all",     label: "All",     count: records.length },
+              { value: "pending", label: "Pending", count: records.filter(r => r.claimStatus === "pending").length },
+              { value: "settled", label: "Settled", count: records.filter(r => r.claimStatus === "settled").length },
             ].map(s => (
               <button
                 key={s.value}
                 onClick={() => setStatusFilter(s.value)}
-                className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
                   statusFilter === s.value ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"
                 }`}
-              >{s.label}</button>
+              >
+                {s.label}
+                <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${statusFilter === s.value ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{s.count}</span>
+              </button>
             ))}
           </div>
 
