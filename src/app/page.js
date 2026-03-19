@@ -586,24 +586,33 @@ export default function Dashboard() {
             {/* Ward filter pills */}
             <div className="flex items-center gap-2 flex-wrap mb-5">
               {[
-                { value: "all",         label: "All" },
-                { value: "general",     label: "General" },
-                { value: "pedia",       label: "Pedia" },
-                { value: "semi_private",label: "Semi Private" },
-                { value: "cabin",       label: "Cabin" },
-              ].map(w => (
-                <button
-                  key={w.value}
-                  onClick={() => setWardFilter(w.value)}
-                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
-                    wardFilter === w.value
-                      ? "bg-gray-900 text-white"
-                      : "bg-gray-100 text-gray-500 hover:bg-gray-200"
-                  }`}
-                >
-                  {w.label}
-                </button>
-              ))}
+                { value: "all",          label: "All"         },
+                { value: "general",      label: "General"     },
+                { value: "pedia",        label: "Pedia"       },
+                { value: "semi_private", label: "Semi Private"},
+                { value: "cabin",        label: "Cabin"       },
+              ].map(w => {
+                const count = w.value === "all"
+                  ? baseData.length
+                  : baseData.filter(a => a.accommodation === w.value).length
+                if (w.value !== "all" && count === 0) return null
+                return (
+                  <button
+                    key={w.value}
+                    onClick={() => setWardFilter(w.value)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${
+                      wardFilter === w.value
+                        ? "bg-gray-900 text-white"
+                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                    }`}
+                  >
+                    {w.label}
+                    <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${
+                      wardFilter === w.value ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"
+                    }`}>{count}</span>
+                  </button>
+                )
+              })}
             </div>
 
             {/* Tabs */}
