@@ -203,7 +203,8 @@ export default function MasterDashboard() {
         const claim = days * muhcs + wardAddon
 
         const sum = (arr) => (arr || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
-        const miscTotal = days * 150
+        const miscRate = (a.accommodation === "cabin" || a.accommodation === "semi_private") ? 100 : 50
+        const miscTotal = days * miscRate
         const counterNoMisc = (counter || []).filter(e => e.admission_id === a.id && e.charge_type !== "misc").reduce((s, e) => s + Number(e.amount), 0)
         const entriesTotal = sum(lab) + sum(pharma) + sum(xray) + counterNoMisc + sum(ecg) + miscTotal
         const hospitalBill = a.total_bill_override !== null && a.total_bill_override !== undefined

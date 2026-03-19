@@ -177,7 +177,8 @@ export default function Dashboard() {
         const allowed = days * muhcs + getWardAddon(a, days)
         const hasOverride = a.total_bill_override !== null && a.total_bill_override !== undefined
         const sum = (arr, id) => (arr || []).filter(e => e.admission_id === id).reduce((s, e) => s + Number(e.amount), 0)
-        const miscTotal = days * 150
+        const miscRate = (a.accommodation === "cabin" || a.accommodation === "semi_private") ? 100 : 50
+        const miscTotal = days * miscRate
         const counterNoMisc = (counter || []).filter(e => e.charge_type !== "misc")
         const counterNoMiscSum = counterNoMisc.filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
         const entriesTotal = sum(lab, a.id) + sum(pharma, a.id) + sum(xray, a.id) + counterNoMiscSum + sum(ecg, a.id) + miscTotal

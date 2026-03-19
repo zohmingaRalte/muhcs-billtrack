@@ -547,7 +547,7 @@ export default function PatientDetailPage({ params }) {
   // Bed fee
   const bedFee = days * wardRate
 
-  const MISC_RATE = 150
+  const MISC_RATE = (admission.accommodation === "cabin" || admission.accommodation === "semi_private") ? 100 : 50
   const labTotal = labEntries.reduce((s, e) => s + Number(e.amount), 0)
   const pharmaTotal = pharmaEntries.reduce((s, e) => s + Number(e.amount), 0)
   const xrayTotal = xrayEntries.reduce((s, e) => s + Number(e.amount), 0)
@@ -1084,7 +1084,7 @@ export default function PatientDetailPage({ params }) {
               <BillRow label="Pharmacy" value={pharmaTotal} />
               <BillRow label="Nursing Fees" value={nursingTotal} />
               <BillRow label="Doctor Round" value={doctorTotal} />
-              <BillRow label={`Miscellaneous (₹150 × ${days}d)`} value={miscTotal} />
+              <BillRow label={`Miscellaneous (₹${MISC_RATE} × ${days}d)`} value={miscTotal} />
               <div className="pt-2.5 mt-1 border-t border-gray-100 flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-gray-900">Total Hospital Bill</span>
                 <span className="text-[15px] md:text-[17px] font-semibold text-gray-900 tabular-nums">
