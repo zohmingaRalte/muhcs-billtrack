@@ -133,33 +133,27 @@ function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons }) {
 
       {hasAddons ? (
         /* Expanded view with addons */
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Stat label="Allowed" value={formatINR(baseAllowed)} />
-            {/* Add-ons column with names directly below */}
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Add-ons</p>
-              <p className="text-[15px] md:text-[17px] font-semibold tabular-nums text-blue-600">{formatINR(addonsTotal)}</p>
-              <div className="flex flex-col gap-1 mt-2">
-                {claimAddons.map(a => (
-                  <span key={a.id} className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit">
-                    <span>{a.name}</span>
-                    <span className="font-semibold tabular-nums">{formatINR(a.amount)}</span>
-                  </span>
-                ))}
-              </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Stat label="Allowed" value={formatINR(baseAllowed)} />
+          <div>
+            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Add-ons</p>
+            <p className="text-[15px] md:text-[17px] font-semibold tabular-nums text-blue-600">{formatINR(addonsTotal)}</p>
+            <div className="flex flex-col gap-1 mt-2">
+              {claimAddons.map(a => (
+                <span key={a.id} className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full w-fit">
+                  <span>{a.name}</span>
+                  <span className="font-semibold tabular-nums">{formatINR(a.amount)}</span>
+                </span>
+              ))}
             </div>
-            <Stat label="Total Allowed" value={formatINR(allowed)} />
-            <Stat
-              label={realOver ? "Excess" : "Remaining"}
-              value={formatINR(Math.abs(balance))}
-              highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
-            />
           </div>
-          {/* Used row */}
-          <div className="border-t border-black/10 pt-3">
-            <Stat label="Used" value={formatINR(used)} />
-          </div>
+          <Stat label="Total Allowed" value={formatINR(allowed)} />
+          <Stat label="Used" value={formatINR(used)} />
+          <Stat
+            label={realOver ? "Excess" : "Remaining"}
+            value={formatINR(Math.abs(balance))}
+            highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
+          />
         </div>
       ) : (
         /* Normal view — no addons */
