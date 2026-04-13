@@ -134,30 +134,28 @@ function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons }) {
       {hasAddons ? (
         /* Expanded view with addons */
         <div className="space-y-3">
-          {/* Row 1: Allowed + Addons + Total Allowed */}
-          <div className="grid grid-cols-3 gap-2">
-            <Stat label="Base Claim" value={formatINR(baseAllowed)} />
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Add-ons</p>
-              <p className="text-[15px] md:text-[17px] font-semibold tabular-nums text-blue-600">{formatINR(addonsTotal)}</p>
-              <div className="mt-1 space-y-0.5">
-                {claimAddons.map(a => (
-                  <p key={a.id} className="text-[10px] text-blue-500 truncate">{a.name}</p>
-                ))}
-              </div>
-            </div>
-            <Stat label="Total Allowed" value={formatINR(allowed)} highlight="green" />
-          </div>
-          {/* Divider */}
-          <div className="border-t border-black/10" />
-          {/* Row 2: Used + Remaining */}
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label="Used" value={formatINR(used)} />
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Stat label="Allowed" value={formatINR(baseAllowed)} />
+            <Stat label="Add-ons" value={formatINR(addonsTotal)} highlight="blue" />
+            <Stat label="Total Allowed" value={formatINR(allowed)} />
             <Stat
               label={realOver ? "Excess" : "Remaining"}
               value={formatINR(Math.abs(balance))}
               highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
             />
+          </div>
+          {/* Addon names */}
+          <div className="flex flex-wrap gap-2 pt-1">
+            {claimAddons.map(a => (
+              <span key={a.id} className="inline-flex items-center gap-1.5 text-[11px] font-medium text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                <span>{a.name}</span>
+                <span className="font-semibold tabular-nums">{formatINR(a.amount)}</span>
+              </span>
+            ))}
+          </div>
+          {/* Used row */}
+          <div className="border-t border-black/10 pt-3">
+            <Stat label="Used" value={formatINR(used)} />
           </div>
         </div>
       ) : (
@@ -178,9 +176,10 @@ function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons }) {
 
 function Stat({ label, value, highlight }) {
   const color =
-    highlight === "red" ? "text-red-600" :
+    highlight === "red"   ? "text-red-600" :
     highlight === "amber" ? "text-amber-600" :
     highlight === "green" ? "text-emerald-600" :
+    highlight === "blue"  ? "text-blue-600" :
     "text-gray-900"
 
   return (
