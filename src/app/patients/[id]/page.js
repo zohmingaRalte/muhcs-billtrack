@@ -78,7 +78,7 @@ function formatINR(amount) {
 
 // ─── BALANCE INDICATOR ───────────────────────────────────────────────────────
 
-function BalanceBar({ used, allowed, alertAllowed }) {
+function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons }) {
   // Alert color uses alertAllowed (conservative)
   const alertPct = alertAllowed > 0 ? Math.min((used / alertAllowed) * 100, 100) : 0
   const alertOver = used > alertAllowed
@@ -109,6 +109,8 @@ function BalanceBar({ used, allowed, alertAllowed }) {
   const displayPct = allowed > 0 ? Math.min((used / allowed) * 100, 100) : 0
   const realOver = used > allowed
   const balance = allowed - used
+  const hasAddons = claimAddons && claimAddons.length > 0
+  const addonsTotal = claimAddons ? claimAddons.reduce((s, a) => s + Number(a.amount), 0) : 0
 
   return (
     <div className={`rounded-xl md:rounded-2xl p-5 md:p-6 ${bgColor}`}>
@@ -121,7 +123,7 @@ function BalanceBar({ used, allowed, alertAllowed }) {
         </span>
       </div>
 
-      {/* Progress bar uses alertPct for visual */}
+      {/* Progress bar */}
       <div className="h-2 bg-black/10 rounded-full overflow-hidden mb-4">
         <div
           className={`h-full rounded-full transition-all duration-500 ${barColor}`}
@@ -129,15 +131,47 @@ function BalanceBar({ used, allowed, alertAllowed }) {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
-        <Stat label="Allowed" value={formatINR(allowed)} />
-        <Stat label="Used" value={formatINR(used)} />
-        <Stat
-          label={realOver ? "Excess" : "Remaining"}
-          value={formatINR(Math.abs(balance))}
-          highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
-        />
-      </div>
+      {hasAddons ? (
+        /* Expanded view with addons */
+        <div className="space-y-3">
+          {/* Row 1: Allowed + Addons + Total Allowed */}
+          <div className="grid grid-cols-3 gap-2">
+            <Stat label="Base Claim" value={formatINR(baseAllowed)} />
+            <div>
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Add-ons</p>
+              <p className="text-[15px] md:text-[17px] font-semibold tabular-nums text-blue-600">{formatINR(addonsTotal)}</p>
+              <div className="mt-1 space-y-0.5">
+                {claimAddons.map(a => (
+                  <p key={a.id} className="text-[10px] text-blue-500 truncate">{a.name}</p>
+                ))}
+              </div>
+            </div>
+            <Stat label="Total Allowed" value={formatINR(allowed)} highlight="green" />
+          </div>
+          {/* Divider */}
+          <div className="border-t border-black/10" />
+          {/* Row 2: Used + Remaining */}
+          <div className="grid grid-cols-2 gap-2">
+            <Stat label="Used" value={formatINR(used)} />
+            <Stat
+              label={realOver ? "Excess" : "Remaining"}
+              value={formatINR(Math.abs(balance))}
+              highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
+            />
+          </div>
+        </div>
+      ) : (
+        /* Normal view — no addons */
+        <div className="grid grid-cols-3 gap-2">
+          <Stat label="Allowed" value={formatINR(allowed)} />
+          <Stat label="Used" value={formatINR(used)} />
+          <Stat
+            label={realOver ? "Excess" : "Remaining"}
+            value={formatINR(Math.abs(balance))}
+            highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -1013,7 +1047,7 @@ export default function PatientDetailPage({ params }) {
         })()}
 
         {/* Balance card */}
-        <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} />
+        <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} baseAllowed={baseAllowed} claimAddons={claimAddons} />
 
         {/* Hospital Bills Breakdown */}
         <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-4 md:py-5">
