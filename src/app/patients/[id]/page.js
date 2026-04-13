@@ -399,6 +399,7 @@ export default function PatientDetailPage({ params }) {
   const [xrayEntries, setXrayEntries] = useState([])
   const [counterEntries, setCounterEntries] = useState([])
   const [ecgEntries, setEcgEntries]         = useState([])
+  const [claimAddons, setClaimAddons]       = useState([])
   const [rates, setRates] = useState({ muhcs: 0, cabin: 0, bed: 0 })
   const [loading, setLoading] = useState(true)
   const [showDischargeModal, setShowDischargeModal] = useState(false)
@@ -507,6 +508,15 @@ export default function PatientDetailPage({ params }) {
       .order("entry_date", { ascending: false })
 
     setEcgEntries(ecg || [])
+
+    // Claim addons
+    const { data: addons } = await supabase
+      .from("claim_addons")
+      .select("*")
+      .eq("admission_id", id)
+      .order("created_at", { ascending: true })
+    setClaimAddons(addons || [])
+
     setLoading(false)
   }
 
@@ -538,11 +548,12 @@ export default function PatientDetailPage({ params }) {
   const hasWardAddon = admission.accommodation === "cabin" || admission.accommodation === "semi_private"
 
   const cabinAddon = hasWardAddon ? days * wardRate : 0
-  const totalAllowed = baseAllowed + cabinAddon
+  const claimAddonsTotal = claimAddons.reduce((s, a) => s + Number(a.amount), 0)
+  const totalAllowed = baseAllowed + cabinAddon + claimAddonsTotal
 
   // Alert allowed: for active patients use one day less (min 1) to warn earlier
   const alertDays = isActive ? Math.max(days - 1, 1) : days
-  const alertAllowed = alertDays * rates.muhcs + (hasWardAddon ? alertDays * wardRate : 0)
+  const alertAllowed = alertDays * rates.muhcs + (hasWardAddon ? alertDays * wardRate : 0) + claimAddonsTotal
 
   // Bed fee
   const bedFee = days * wardRate
@@ -1167,6 +1178,15 @@ export default function PatientDetailPage({ params }) {
           />
         )}
 
+        {/* Claim Addons */}
+        <ClaimAddonsSection
+          addons={claimAddons}
+          admissionId={Number(id)}
+          userId={user.id}
+          canEdit={isAdminOrCounter}
+          onRefresh={fetchAll}
+        />
+
         {/* Mobile discharge button */}
         {isAdminOrCounter && isActive && (
           <button
@@ -1186,7 +1206,136 @@ export default function PatientDetailPage({ params }) {
   )
 }
 
-// ─── COUNTER SECTION ─────────────────────────────────────────────────────────
+// ─── CLAIM ADDONS SECTION ────────────────────────────────────────────────────
+
+function ClaimAddonsSection({ addons, admissionId, userId, canEdit, onRefresh }) {
+  const [showForm, setShowForm] = useState(false)
+  const [editTarget, setEditTarget] = useState(null)
+  const [name, setName] = useState("")
+  const [amount, setAmount] = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState("")
+
+  const total = addons.reduce((s, a) => s + Number(a.amount), 0)
+
+  function startAdd() {
+    setEditTarget(null); setName(""); setAmount(""); setError(""); setShowForm(true)
+  }
+
+  function startEdit(addon) {
+    setEditTarget(addon); setName(addon.name); setAmount(addon.amount.toString()); setError(""); setShowForm(true)
+  }
+
+  async function handleSave() {
+    if (!name.trim()) { setError("Enter a name."); return }
+    if (!amount || isNaN(amount) || Number(amount) <= 0) { setError("Enter a valid amount."); return }
+    setSaving(true)
+    if (editTarget) {
+      const { error: err } = await supabase.from("claim_addons").update({ name: name.trim(), amount: Number(amount) }).eq("id", editTarget.id)
+      if (err) { setError(err.message); setSaving(false); return }
+    } else {
+      const { error: err } = await supabase.from("claim_addons").insert({ admission_id: admissionId, name: name.trim(), amount: Number(amount), created_by: userId })
+      if (err) { setError(err.message); setSaving(false); return }
+    }
+    setSaving(false); setShowForm(false); onRefresh()
+  }
+
+  async function handleDelete(addon) {
+    if (!confirm(`Delete "${addon.name}"?`)) return
+    await supabase.from("claim_addons").delete().eq("id", addon.id)
+    onRefresh()
+  }
+
+  return (
+    <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-4 md:py-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Claim Add-ons</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">Additional amounts added to MUHCS claim</p>
+        </div>
+        {canEdit && (
+          <button
+            onClick={startAdd}
+            className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-full transition"
+          >
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+            </svg>
+            Add
+          </button>
+        )}
+      </div>
+
+      {addons.length === 0 && !showForm && (
+        <p className="text-[13px] text-gray-300 py-3 text-center">No add-ons yet</p>
+      )}
+
+      <div className="space-y-2">
+        {addons.map(addon => (
+          <div key={addon.id} className="flex items-center justify-between py-2 group">
+            <div>
+              <p className="text-[13px] font-medium text-gray-800">{addon.name}</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <p className="text-[14px] font-semibold text-blue-600 tabular-nums">{formatINR(addon.amount)}</p>
+              {canEdit && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 md:opacity-0 md:group-hover:opacity-100 opacity-100 transition">
+                  <button onClick={() => startEdit(addon)} className="text-[11px] text-gray-400 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition">Edit</button>
+                  <button onClick={() => handleDelete(addon)} className="text-[11px] text-red-400 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition">Delete</button>
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {showForm && (
+        <div className="bg-gray-50 rounded-xl p-4 mt-3 space-y-3">
+          <p className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest">
+            {editTarget ? "Edit Add-on" : "New Add-on"}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <input
+              type="text"
+              placeholder="Add-on name"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+            />
+            <input
+              type="number"
+              placeholder="Amount (₹)"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              min="0"
+              step="0.01"
+              className="bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+            />
+          </div>
+          {error && <p className="text-[12px] text-red-500">{error}</p>}
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 bg-gray-900 hover:bg-gray-700 disabled:opacity-50 text-white text-[13px] font-semibold py-2.5 rounded-xl transition"
+            >{saving ? "Saving…" : editTarget ? "Save Changes" : "Add"}</button>
+            <button
+              onClick={() => { setShowForm(false); setEditTarget(null) }}
+              className="px-4 py-2.5 text-[13px] font-medium text-gray-500 hover:text-gray-800 bg-white border border-gray-200 rounded-xl transition"
+            >Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {addons.length > 0 && (
+        <div className="flex justify-between items-center pt-3 mt-2 border-t border-gray-100">
+          <span className="text-[12px] font-semibold text-gray-400 uppercase tracking-widest">Total Add-ons</span>
+          <span className="text-[15px] font-semibold text-blue-600 tabular-nums">{formatINR(total)}</span>
+        </div>
+      )}
+    </div>
+  )
+}
 
 const CHARGE_TYPES = [
   { value: "nursing",      label: "Nursing Fees" },

@@ -162,19 +162,21 @@ export default function Dashboard() {
 
     const admIds = (admissionData || []).map(a => a.id)
     if (admIds.length > 0) {
-      const [{ data: lab }, { data: pharma }, { data: xray }, { data: counter }, { data: ecg }] =
+      const [{ data: lab }, { data: pharma }, { data: xray }, { data: counter }, { data: ecg }, { data: addons }] =
         await Promise.all([
           supabase.from("lab_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("pharma_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("xray_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("counter_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("ecg_entries").select("admission_id, amount").in("admission_id", admIds),
+          supabase.from("claim_addons").select("admission_id, amount").in("admission_id", admIds),
         ])
 
       const map = {}
       admissionData.forEach(a => {
         const days = getDays(a)
-        const allowed = days * muhcs + getWardAddon(a, days)
+        const addonsTotal = (addons || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
+        const allowed = days * muhcs + getWardAddon(a, days) + addonsTotal
         const hasOverride = a.total_bill_override !== null && a.total_bill_override !== undefined
         const sum = (arr, id) => (arr || []).filter(e => e.admission_id === id).reduce((s, e) => s + Number(e.amount), 0)
         const miscRate = (a.accommodation === "cabin" || a.accommodation === "semi_private") ? 100 : 50

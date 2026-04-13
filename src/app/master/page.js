@@ -187,20 +187,22 @@ export default function MasterDashboard() {
     let balanceMap = {}
 
     if (admIds.length > 0) {
-      const [{ data: lab }, { data: pharma }, { data: xray }, { data: counter }, { data: ecg }] =
+      const [{ data: lab }, { data: pharma }, { data: xray }, { data: counter }, { data: ecg }, { data: addons }] =
         await Promise.all([
           supabase.from("lab_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("pharma_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("xray_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("counter_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("ecg_entries").select("admission_id, amount").in("admission_id", admIds),
+          supabase.from("claim_addons").select("admission_id, amount").in("admission_id", admIds),
         ])
 
       admissions.forEach(a => {
         const days = calcDays(a.admission_date, a.discharge_date)
         const wardAddon = a.accommodation === "cabin" ? days * cabin
           : a.accommodation === "semi_private" ? days * semiPrivate : 0
-        const claim = days * muhcs + wardAddon
+        const addonsTotal = (addons || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
+        const claim = days * muhcs + wardAddon + addonsTotal
 
         const sum = (arr) => (arr || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
         const miscRate = (a.accommodation === "cabin" || a.accommodation === "semi_private") ? 100 : 50
