@@ -267,8 +267,12 @@ export default function MasterDashboard() {
   const totalPending     = totalClaim - totalClaimPaid
   const countSettled     = filtered.filter(r => r.claimStatus === "settled").length
   const countPending     = filtered.filter(r => r.claimStatus === "pending").length
-  // Unfiltered totals for claim card (matches main dashboard)
-  const grandTotalClaim  = records.reduce((s, r) => s + (r.claim || 0), 0)
+  // Unfiltered totals for stat cards (always show full picture)
+  const grandTotalClaim    = records.reduce((s, r) => s + (r.claim || 0), 0)
+  const grandSettledAmount = records.filter(r => r.claimStatus === "settled").reduce((s, r) => s + (r.claim || 0), 0)
+  const grandPendingAmount = records.filter(r => r.claimStatus === "pending").reduce((s, r) => s + (r.claim || 0), 0)
+  const grandCountSettled  = records.filter(r => r.claimStatus === "settled").length
+  const grandCountPending  = records.filter(r => r.claimStatus === "pending").length
 
   // ── Edit handlers ──
   function openEdit(record) {
@@ -420,22 +424,22 @@ export default function MasterDashboard() {
 
         {/* Stat cards — same as main dashboard */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
-          <StatCard label="Total Patients"  value={loading ? "—" : records.length} color="gray" />
+          <StatCard label="Total Patients" value={loading ? "—" : records.length} color="gray" />
           <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-6">
             <div className="flex items-center gap-1.5 mb-3">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
               <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Settled</p>
             </div>
-            <p className="text-[18px] md:text-[22px] font-semibold text-emerald-600 tabular-nums tracking-tight leading-none">{loading ? "—" : formatINR(filtered.filter(r => r.claimStatus === "settled").reduce((s, r) => s + (r.claim || 0), 0))}</p>
-            <p className="text-[11px] text-gray-400 mt-1.5">{countSettled} patients</p>
+            <p className="text-[18px] md:text-[22px] font-semibold text-emerald-600 tabular-nums tracking-tight leading-none">{loading ? "—" : formatINR(grandSettledAmount)}</p>
+            <p className="text-[11px] text-gray-400 mt-1.5">{grandCountSettled} patients</p>
           </div>
           <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-6">
             <div className="flex items-center gap-1.5 mb-3">
               <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
               <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Pending</p>
             </div>
-            <p className="text-[18px] md:text-[22px] font-semibold text-red-500 tabular-nums tracking-tight leading-none">{loading ? "—" : formatINR(filtered.filter(r => r.claimStatus === "pending").reduce((s, r) => s + (r.claim || 0), 0))}</p>
-            <p className="text-[11px] text-gray-400 mt-1.5">{countPending} patients</p>
+            <p className="text-[18px] md:text-[22px] font-semibold text-red-500 tabular-nums tracking-tight leading-none">{loading ? "—" : formatINR(grandPendingAmount)}</p>
+            <p className="text-[11px] text-gray-400 mt-1.5">{grandCountPending} patients</p>
           </div>
           <ClaimCard
             claim={loading ? null : grandTotalClaim}
