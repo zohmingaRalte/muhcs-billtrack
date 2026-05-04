@@ -167,7 +167,7 @@ export default function Dashboard() {
           supabase.from("lab_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("pharma_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("xray_entries").select("admission_id, amount").in("admission_id", admIds),
-          supabase.from("counter_entries").select("admission_id, amount").in("admission_id", admIds),
+          supabase.from("counter_entries").select("admission_id, amount, charge_type").in("admission_id", admIds),
           supabase.from("ecg_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("claim_addons").select("admission_id, amount").in("admission_id", admIds),
         ])

@@ -192,7 +192,7 @@ export default function MasterDashboard() {
           supabase.from("lab_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("pharma_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("xray_entries").select("admission_id, amount").in("admission_id", admIds),
-          supabase.from("counter_entries").select("admission_id, amount").in("admission_id", admIds),
+          supabase.from("counter_entries").select("admission_id, amount, charge_type").in("admission_id", admIds),
           supabase.from("ecg_entries").select("admission_id, amount").in("admission_id", admIds),
           supabase.from("claim_addons").select("admission_id, amount").in("admission_id", admIds),
         ])
@@ -267,6 +267,8 @@ export default function MasterDashboard() {
   const totalPending     = totalClaim - totalClaimPaid
   const countSettled     = filtered.filter(r => r.claimStatus === "settled").length
   const countPending     = filtered.filter(r => r.claimStatus === "pending").length
+  // Unfiltered totals for claim card (matches main dashboard)
+  const grandTotalClaim  = records.reduce((s, r) => s + (r.claim || 0), 0)
 
   // ── Edit handlers ──
   function openEdit(record) {
@@ -436,7 +438,7 @@ export default function MasterDashboard() {
             <p className="text-[11px] text-gray-400 mt-1.5">{countPending} patients</p>
           </div>
           <ClaimCard
-            claim={loading ? null : totalClaim}
+            claim={loading ? null : grandTotalClaim}
             received={loading ? null : totalReceived}
             onViewDetails={() => setShowPaymentsDetail(true)}
           />
