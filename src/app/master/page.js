@@ -202,7 +202,7 @@ export default function MasterDashboard() {
         const wardAddon = a.accommodation === "cabin" ? days * cabin
           : a.accommodation === "semi_private" ? days * semiPrivate : 0
         const addonsTotal = (addons || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
-        const claim = days * muhcs + wardAddon + addonsTotal + addonsTotal
+        const claim = days * muhcs + wardAddon + addonsTotal
 
         const sum = (arr) => (arr || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
         const miscRate = (a.accommodation === "cabin" || a.accommodation === "semi_private") ? 100 : 50
