@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab]           = useState("active")
   const [totalClaim, setTotalClaim]         = useState(0)
   const [totalReceived, setTotalReceived]   = useState(0)
+  const [totalSettled, setTotalSettled]     = useState(0)
   const [paymentsList, setPaymentsList]     = useState([])
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [showPaymentsDetail, setShowPaymentsDetail] = useState(false)
@@ -157,20 +158,26 @@ export default function Dashboard() {
     const addonsGrandTotal = (allAddons || []).reduce((s, a) => s + Number(a.amount), 0)
     setTotalClaim(total + addonsGrandTotal)
 
-    // Settled amount = sum of claim amounts for settled patients (from master)
-    // Used for pending calculation instead of actual received (which is after tax)
+    // Actual payments received (for display in modal)
+    const { data: payments } = await supabase.from("payments").select("amount, payment_date").order("payment_date", { ascending: false })
+    const received = (payments || []).reduce((s, p) => s + Number(p.amount), 0)
+    setTotalReceived(received)
+    setPaymentsList(payments || [])
+
+    // Settled amount = sum of claim amounts for settled patients
+    // Used only for pending calculation (Total Claim - Settled)
     const { data: settledAdmissions } = await supabase
       .from("admissions")
       .select("id, admission_date, discharge_date, accommodation, claim_status")
       .eq("claim_status", "settled")
-    
+
     let settledTotal = 0
     if (settledAdmissions) {
       const settledIds = settledAdmissions.map(a => a.id)
       const { data: settledAddons } = settledIds.length > 0
         ? await supabase.from("claim_addons").select("admission_id, amount").in("admission_id", settledIds)
         : { data: [] }
-      
+
       settledAdmissions.forEach(a => {
         const days = calcDischarged(a.admission_date, a.discharge_date)
         const wardAddon = a.accommodation === "cabin" ? days * cabin
@@ -179,11 +186,7 @@ export default function Dashboard() {
         settledTotal += days * muhcs + wardAddon + addonAmt
       })
     }
-    setTotalReceived(settledTotal)
-
-    // Keep payments list for the payments detail modal
-    const { data: payments } = await supabase.from("payments").select("amount, payment_date").order("payment_date", { ascending: false })
-    setPaymentsList(payments || [])
+    setTotalSettled(settledTotal)
 
     const admIds = (admissionData || []).map(a => a.id)
     if (admIds.length > 0) {
@@ -493,6 +496,7 @@ export default function Dashboard() {
           <ClaimCard
             claim={loading ? null : totalClaim}
             received={loading ? null : totalReceived}
+            settled={loading ? null : totalSettled}
             isAdmin={user?.role === "admin"}
             onAdd={() => { setPaymentAmount(""); setPaymentDate(new Date().toISOString().split("T")[0]); setShowPaymentModal(true) }}
             onViewDetails={() => setShowPaymentsDetail(true)}
@@ -853,8 +857,8 @@ export default function Dashboard() {
 
 // ─── SUB COMPONENTS ───────────────────────────────────────────────────────────
 
-function ClaimCard({ claim, received, isAdmin, onAdd, onViewDetails }) {
-  const pending = claim !== null && received !== null ? claim - received : null
+function ClaimCard({ claim, received, settled, isAdmin, onAdd, onViewDetails }) {
+  const pending = claim !== null && settled !== null ? claim - settled : null
   return (
     <div
       onClick={onViewDetails}
@@ -885,7 +889,7 @@ function ClaimCard({ claim, received, isAdmin, onAdd, onViewDetails }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-gray-400 mb-0.5">Settled</p>
+          <p className="text-[10px] text-gray-400 mb-0.5">Received</p>
           <p className="text-[15px] md:text-[18px] font-semibold text-emerald-600 tabular-nums tracking-tight leading-none">
             {received !== null ? formatINR(received) : "—"}
           </p>
