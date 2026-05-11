@@ -202,7 +202,7 @@ export default function MasterDashboard() {
         const wardAddon = a.accommodation === "cabin" ? days * cabin
           : a.accommodation === "semi_private" ? days * semiPrivate : 0
         const addonsTotal = (addons || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
-        const claim = days * muhcs + wardAddon + addonsTotal
+        const claim = days * muhcs + wardAddon + addonsTotal + addonsTotal
 
         const sum = (arr) => (arr || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
         const miscRate = (a.accommodation === "cabin" || a.accommodation === "semi_private") ? 100 : 50
@@ -268,7 +268,7 @@ export default function MasterDashboard() {
   const countSettled     = filtered.filter(r => r.claimStatus === "settled").length
   const countPending     = filtered.filter(r => r.claimStatus === "pending").length
   // Unfiltered totals for stat cards (always show full picture)
-  const grandTotalClaim    = records.reduce((s, r) => s + ((r.claim || 0) - (r.addonsTotal || 0)), 0)
+  const grandTotalClaim    = records.reduce((s, r) => s + (r.claim || 0), 0)
   const grandSettledAmount = records.filter(r => r.claimStatus === "settled").reduce((s, r) => s + (r.claim || 0), 0)
   const grandPendingAmount = records.filter(r => r.claimStatus === "pending").reduce((s, r) => s + (r.claim || 0), 0)
   const grandCountSettled  = records.filter(r => r.claimStatus === "settled").length

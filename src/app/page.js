@@ -152,7 +152,10 @@ export default function Dashboard() {
       const days = calcDischarged(a.admission_date, a.discharge_date)
       total += days * muhcs + getWardAddon(a, days)
     })
-    setTotalClaim(total)
+    // Include claim addons in total to match sheet
+    const { data: allAddons } = await supabase.from("claim_addons").select("admission_id, amount")
+    const addonsGrandTotal = (allAddons || []).reduce((s, a) => s + Number(a.amount), 0)
+    setTotalClaim(total + addonsGrandTotal)
 
     // Fetch total payments received
     const { data: payments } = await supabase.from("payments").select("amount, payment_date").order("payment_date", { ascending: false })
@@ -257,7 +260,10 @@ export default function Dashboard() {
     const days = calcDischarged(a.admission_date, a.discharge_date)
     const addon = a.accommodation === "cabin" ? days * rates.cabin
       : a.accommodation === "semi_private" ? days * rates.semiPrivate : 0
-    return total + days * rates.muhcs + addon
+    const addonsClaim = balanceMap[a.id]?.allowed
+      ? balanceMap[a.id].allowed - (days * rates.muhcs + addon)
+      : 0
+    return total + days * rates.muhcs + addon + addonsClaim
   }, 0)
   const monthlyUsed = monthlyDischarged.reduce((total, a) => {
     return total + (balanceMap[a.id]?.used || 0)
