@@ -157,10 +157,32 @@ export default function Dashboard() {
     const addonsGrandTotal = (allAddons || []).reduce((s, a) => s + Number(a.amount), 0)
     setTotalClaim(total + addonsGrandTotal)
 
-    // Fetch total payments received
+    // Settled amount = sum of claim amounts for settled patients (from master)
+    // Used for pending calculation instead of actual received (which is after tax)
+    const { data: settledAdmissions } = await supabase
+      .from("admissions")
+      .select("id, admission_date, discharge_date, accommodation, claim_status")
+      .eq("claim_status", "settled")
+    
+    let settledTotal = 0
+    if (settledAdmissions) {
+      const settledIds = settledAdmissions.map(a => a.id)
+      const { data: settledAddons } = settledIds.length > 0
+        ? await supabase.from("claim_addons").select("admission_id, amount").in("admission_id", settledIds)
+        : { data: [] }
+      
+      settledAdmissions.forEach(a => {
+        const days = calcDischarged(a.admission_date, a.discharge_date)
+        const wardAddon = a.accommodation === "cabin" ? days * cabin
+          : a.accommodation === "semi_private" ? days * semiPrivate : 0
+        const addonAmt = (settledAddons || []).filter(x => x.admission_id === a.id).reduce((s, x) => s + Number(x.amount), 0)
+        settledTotal += days * muhcs + wardAddon + addonAmt
+      })
+    }
+    setTotalReceived(settledTotal)
+
+    // Keep payments list for the payments detail modal
     const { data: payments } = await supabase.from("payments").select("amount, payment_date").order("payment_date", { ascending: false })
-    const received = (payments || []).reduce((s, p) => s + Number(p.amount), 0)
-    setTotalReceived(received)
     setPaymentsList(payments || [])
 
     const admIds = (admissionData || []).map(a => a.id)
@@ -863,7 +885,7 @@ function ClaimCard({ claim, received, isAdmin, onAdd, onViewDetails }) {
           </p>
         </div>
         <div>
-          <p className="text-[10px] text-gray-400 mb-0.5">Received</p>
+          <p className="text-[10px] text-gray-400 mb-0.5">Settled</p>
           <p className="text-[15px] md:text-[18px] font-semibold text-emerald-600 tabular-nums tracking-tight leading-none">
             {received !== null ? formatINR(received) : "—"}
           </p>
