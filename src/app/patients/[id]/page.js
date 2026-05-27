@@ -78,7 +78,7 @@ function formatINR(amount) {
 
 // ─── BALANCE INDICATOR ───────────────────────────────────────────────────────
 
-function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons }) {
+function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons, cabinAddon = 0 }) {
   // Alert color uses alertAllowed (conservative)
   const alertPct = alertAllowed > 0 ? Math.min((used / alertAllowed) * 100, 100) : 0
   const alertOver = used > alertAllowed
@@ -134,7 +134,7 @@ function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons }) {
       {hasAddons ? (
         /* Expanded view with addons */
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-          <Stat label="Allowed" value={formatINR(baseAllowed)} />
+          <Stat label="Allowed" value={formatINR(baseAllowed + (cabinAddon || 0))} />
           <div>
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Add-ons</p>
             <p className="text-[15px] md:text-[17px] font-semibold tabular-nums text-blue-600">{formatINR(addonsTotal)}</p>
@@ -1043,7 +1043,7 @@ export default function PatientDetailPage({ params }) {
         })()}
 
         {/* Balance card */}
-        <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} baseAllowed={baseAllowed} claimAddons={claimAddons} />
+        <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} baseAllowed={baseAllowed} claimAddons={claimAddons} cabinAddon={cabinAddon} />
 
         {/* Hospital Bills Breakdown */}
         <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-4 md:py-5">

@@ -85,6 +85,7 @@ export default function Dashboard() {
   const [loading, setLoading]               = useState(true)
   const [search, setSearch]                 = useState("")
   const [wardFilter, setWardFilter]         = useState("all")
+  const [dodMonthFilter, setDodMonthFilter] = useState("all")
   const [sortDir, setSortDir]               = useState("desc")
   const [sortMode, setSortMode]             = useState("manual") // "manual" | "doa"
   const [patientOrder, setPatientOrder]     = useState({}) // admission_id -> sort_order
@@ -257,6 +258,12 @@ export default function Dashboard() {
   const filteredData    = baseData
     .filter(a => search.trim() ? a.patients?.full_name?.toLowerCase().includes(search.toLowerCase()) : true)
     .filter(a => wardFilter !== "all" ? a.accommodation === wardFilter : true)
+    .filter(a => {
+      if (activeTab !== "discharged" || dodMonthFilter === "all") return true
+      if (!a.discharge_date) return false
+      const d = new Date(a.discharge_date)
+      return `${d.getFullYear()}-${d.getMonth()}` === dodMonthFilter
+    })
   const isAdminOrCounter = user?.role === "admin" || user?.role === "counter"
   const displayData     = [...filteredData].sort((a, b) => {
     if (activeTab === "discharged" && isAdminOrCounter && sortMode === "manual") {
@@ -649,13 +656,49 @@ export default function Dashboard() {
               })}
             </div>
 
+            {/* DOD Month filter — discharged tab only */}
+            {activeTab === "discharged" && (() => {
+              // Build unique months from discharged cases
+              const monthMap = {}
+              dischargedCases.forEach(a => {
+                if (!a.discharge_date) return
+                const d = new Date(a.discharge_date)
+                const key = `${d.getFullYear()}-${d.getMonth()}`
+                if (!monthMap[key]) monthMap[key] = { key, label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, count: 0 }
+                monthMap[key].count++
+              })
+              const months = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key))
+              if (months.length === 0) return null
+              return (
+                <div className="flex items-center gap-2 flex-wrap mb-5">
+                  <button
+                    onClick={() => setDodMonthFilter("all")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${dodMonthFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                  >
+                    All Months
+                    <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${dodMonthFilter === "all" ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{dischargedCases.length}</span>
+                  </button>
+                  {months.map(m => (
+                    <button
+                      key={m.key}
+                      onClick={() => setDodMonthFilter(m.key)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${dodMonthFilter === m.key ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
+                    >
+                      {m.label}
+                      <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${dodMonthFilter === m.key ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{m.count}</span>
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
+
             {/* Tabs */}
             <div className="relative flex gap-7">
               {tabs.map(tab => (
                 <button
                   key={tab.key}
                   ref={el => (tabRefs.current[tab.key] = el)}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => { setActiveTab(tab.key); setDodMonthFilter("all") }}
                   className={`pb-3 text-[14px] md:text-[15px] font-medium transition-colors duration-150 flex items-center gap-2 ${
                     activeTab === tab.key ? "text-gray-900" : "text-gray-400 hover:text-gray-600"
                   }`}
