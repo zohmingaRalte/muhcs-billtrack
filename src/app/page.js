@@ -271,9 +271,10 @@ export default function Dashboard() {
       const ob = patientOrder[b.id] ?? 999999
       return oa - ob
     }
-    const da = new Date(a.admission_date)
-    const db = new Date(b.admission_date)
-    return sortDir === "asc" ? da - db : db - da
+    // Use DOD for discharged, DOA for active
+    const dateA = activeTab === "discharged" && a.discharge_date ? new Date(a.discharge_date) : new Date(a.admission_date)
+    const dateB = activeTab === "discharged" && b.discharge_date ? new Date(b.discharge_date) : new Date(b.admission_date)
+    return sortDir === "asc" ? dateA - dateB : dateB - dateA
   })
 
   const tabs = [
@@ -557,7 +558,7 @@ export default function Dashboard() {
                       onClick={() => setSortMode("doa")}
                       className={`px-3 py-1.5 transition flex items-center gap-1 ${sortMode === "doa" ? "bg-gray-900 text-white" : "bg-white text-gray-500 hover:bg-gray-50"}`}
                     >
-                      DOA
+                      DOD
                       {sortMode === "doa" && (
                         <span onClick={e => { e.stopPropagation(); setSortDir(d => d === "asc" ? "desc" : "asc") }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
@@ -582,7 +583,10 @@ export default function Dashboard() {
                         : <path d="M12 19L5 5h14L12 19z" fill="currentColor"/>
                       }
                     </svg>
-                    {sortDir === "asc" ? "Oldest first" : "Newest first"}
+                    {activeTab === "discharged"
+                      ? sortDir === "asc" ? "DOD Oldest first" : "DOD Newest first"
+                      : sortDir === "asc" ? "Oldest first" : "Newest first"
+                    }
                   </button>
                 )}
               </div>
