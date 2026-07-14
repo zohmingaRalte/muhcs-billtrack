@@ -42,8 +42,14 @@ export default function NewPatientPage() {
   function validate() {
     const e = {}
     if (!fullName.trim()) e.fullName = "Full name is required."
-    if (!age || isNaN(age) || Number(age) <= 0 || (ageUnit === "years" && Number(age) > 120) || (ageUnit === "months" && Number(age) > 11))
-      e.age = ageUnit === "months" ? "Enter valid months (1-11)." : "Enter a valid age."
+    if (!age || isNaN(age) || Number(age) <= 0 || 
+        (ageUnit === "years" && Number(age) > 120) || 
+        (ageUnit === "months" && Number(age) > 11) ||
+        (ageUnit === "weeks" && Number(age) > 51) ||
+        (ageUnit === "days" && Number(age) > 90))
+      e.age = ageUnit === "months" ? "Enter valid months (1-11)." : 
+              ageUnit === "weeks" ? "Enter valid weeks (1-51)." :
+              ageUnit === "days" ? "Enter valid days (1-90)." : "Enter a valid age."
     if (!admissionDate) e.admissionDate = "Admission date is required."
     return e
   }
@@ -158,26 +164,31 @@ export default function NewPatientPage() {
                   <div className="flex gap-2">
                     <input
                       type="number"
-                      placeholder={ageUnit === "months" ? "e.g. 3" : "e.g. 45"}
+                      placeholder={ageUnit === "months" ? "e.g. 3" : ageUnit === "weeks" ? "e.g. 6" : ageUnit === "days" ? "e.g. 10" : "e.g. 45"}
                       value={age}
                       onChange={e => setAge(e.target.value)}
                       min="1"
-                      max={ageUnit === "months" ? "11" : "120"}
+                      max={ageUnit === "months" ? "11" : ageUnit === "weeks" ? "51" : ageUnit === "days" ? "90" : "120"}
                       className={`flex-1 ${inputClass(errors.age)}`}
                     />
                     <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
-                      {["years", "months"].map(u => (
+                      {[
+                        { value: "years",  label: "Yrs" },
+                        { value: "months", label: "Mo"  },
+                        { value: "weeks",  label: "Wks" },
+                        { value: "days",   label: "Days"},
+                      ].map(u => (
                         <button
-                          key={u}
+                          key={u.value}
                           type="button"
-                          onClick={() => { setAgeUnit(u); setAge("") }}
-                          className={`px-3 py-3 text-[12px] font-semibold capitalize transition ${
-                            ageUnit === u
+                          onClick={() => { setAgeUnit(u.value); setAge("") }}
+                          className={`px-2.5 py-3 text-[11px] font-semibold transition ${
+                            ageUnit === u.value
                               ? "bg-gray-900 text-white"
                               : "bg-white text-gray-500 hover:bg-gray-50"
                           }`}
                         >
-                          {u === "years" ? "Yrs" : "Mo"}
+                          {u.label}
                         </button>
                       ))}
                     </div>

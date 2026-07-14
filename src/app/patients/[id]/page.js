@@ -891,22 +891,27 @@ export default function PatientDetailPage({ params }) {
                       value={editAge}
                       onChange={e => setEditAge(e.target.value)}
                       min="1"
-                      max={editAgeUnit === "months" ? "11" : "120"}
+                      max={editAgeUnit === "months" ? "11" : editAgeUnit === "weeks" ? "51" : editAgeUnit === "days" ? "90" : "120"}
                       className={`flex-1 ${editInputClass()}`}
                     />
                     <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
-                      {["years", "months"].map(u => (
+                      {[
+                        { value: "years",  label: "Yrs"  },
+                        { value: "months", label: "Mo"   },
+                        { value: "weeks",  label: "Wks"  },
+                        { value: "days",   label: "Days" },
+                      ].map(u => (
                         <button
-                          key={u}
+                          key={u.value}
                           type="button"
-                          onClick={() => { setEditAgeUnit(u); setEditAge("") }}
-                          className={`px-3 py-2.5 text-[12px] font-semibold capitalize transition ${
-                            editAgeUnit === u
+                          onClick={() => { setEditAgeUnit(u.value); setEditAge("") }}
+                          className={`px-2.5 py-2.5 text-[11px] font-semibold transition ${
+                            editAgeUnit === u.value
                               ? "bg-gray-900 text-white"
                               : "bg-white text-gray-500 hover:bg-gray-50"
                           }`}
                         >
-                          {u === "years" ? "Yrs" : "Mo"}
+                          {u.label}
                         </button>
                       ))}
                     </div>
