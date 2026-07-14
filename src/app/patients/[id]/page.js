@@ -78,7 +78,7 @@ function formatINR(amount) {
 
 // ─── BALANCE INDICATOR ───────────────────────────────────────────────────────
 
-function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons, cabinAddon = 0 }) {
+function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons, cabinAddon = 0, isAdmin = false }) {
   // Alert color uses alertAllowed (conservative)
   const alertPct = alertAllowed > 0 ? Math.min((used / alertAllowed) * 100, 100) : 0
   const alertOver = used > alertAllowed
@@ -148,20 +148,20 @@ function BalanceBar({ used, allowed, alertAllowed, baseAllowed, claimAddons, cab
             </div>
           </div>
           <Stat label="Total Allowed" value={formatINR(allowed)} />
-          <Stat label="Used" value={formatINR(used)} />
+          {isAdmin && <Stat label="Used" value={formatINR(used)} />}
           <Stat
-            label={realOver ? "Excess" : "Remaining"}
+            label={realOver ? "Exceed" : "Remaining"}
             value={formatINR(Math.abs(balance))}
             highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
           />
         </div>
       ) : (
         /* Normal view — no addons */
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid gap-2 ${isAdmin ? "grid-cols-3" : "grid-cols-2"}`}>
           <Stat label="Allowed" value={formatINR(allowed)} />
-          <Stat label="Used" value={formatINR(used)} />
+          {isAdmin && <Stat label="Used" value={formatINR(used)} />}
           <Stat
-            label={realOver ? "Excess" : "Remaining"}
+            label={realOver ? "Exceed" : "Remaining"}
             value={formatINR(Math.abs(balance))}
             highlight={realOver ? "red" : displayPct >= 80 ? "amber" : "green"}
           />
@@ -491,8 +491,8 @@ export default function PatientDetailPage({ params }) {
     const muhcs = ratesData?.find(r => r.description.toLowerCase().includes("muhcs"))?.amount || 0
     const cabin = ratesData?.find(r => r.description.toLowerCase().includes("cabin"))?.amount || 0
     const bed = ratesData?.find(r => r.description.toLowerCase().includes("bed"))?.amount || 0
-    const semiPrivate = ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
-    setRates({ muhcs, cabin, bed, semiPrivate })
+    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("deluxe") || r.description.toLowerCase().includes("semi"))?.amount || 0
+    setRates({ muhcs, cabin, bed, deluxe })
 
     // Lab entries with creator name
     const { data: lab } = await supabase
@@ -572,10 +572,10 @@ export default function PatientDetailPage({ params }) {
   const baseAllowed = days * rates.muhcs
 
   const wardRate = admission.accommodation === "cabin" ? rates.cabin
-    : admission.accommodation === "semi_private" ? rates.semiPrivate
+    : admission.accommodation === "deluxe" ? rates.deluxe
     : rates.bed // general and pedia both use bed rate
 
-  const hasWardAddon = admission.accommodation === "cabin" || admission.accommodation === "semi_private"
+  const hasWardAddon = admission.accommodation === "cabin" || admission.accommodation === "deluxe"
 
   const cabinAddon = hasWardAddon ? days * wardRate : 0
   const claimAddonsTotal = claimAddons.reduce((s, a) => s + Number(a.amount), 0)
@@ -588,7 +588,7 @@ export default function PatientDetailPage({ params }) {
   // Bed fee
   const bedFee = days * wardRate
 
-  const MISC_RATE = (admission.accommodation === "cabin" || admission.accommodation === "semi_private") ? 100 : 50
+  const MISC_RATE = (admission.accommodation === "cabin" || admission.accommodation === "deluxe") ? 100 : 50
   const labTotal = labEntries.reduce((s, e) => s + Number(e.amount), 0)
   const pharmaTotal = pharmaEntries.reduce((s, e) => s + Number(e.amount), 0)
   const xrayTotal = xrayEntries.reduce((s, e) => s + Number(e.amount), 0)
@@ -973,7 +973,7 @@ export default function PatientDetailPage({ params }) {
                     {[
                       { value: "general",      label: "General",      sub: "₹400/day" },
                       { value: "pedia",        label: "Pedia",        sub: "₹400/day" },
-                      { value: "semi_private", label: "Semi Private", sub: "₹800/day" },
+                      { value: "deluxe", label: "Deluxe", sub: "₹2,500/day" },
                       { value: "cabin",        label: "Cabin",        sub: "₹1,500/day" },
                     ].map(opt => (
                       <button
@@ -1029,7 +1029,7 @@ export default function PatientDetailPage({ params }) {
               <InfoItem label="Contact" value={admission.patients?.contact || "—"} />
               <InfoItem label="Ward" value={
                 admission.accommodation === "cabin" ? "Cabin" :
-                admission.accommodation === "semi_private" ? "Semi Private" :
+                admission.accommodation === "deluxe" ? "Deluxe" :
                 admission.accommodation === "pedia" ? "Pedia" : "General"
               } />
               <InfoItem label="DOA" value={formatDate(admission.admission_date)} />
@@ -1048,9 +1048,10 @@ export default function PatientDetailPage({ params }) {
         })()}
 
         {/* Balance card */}
-        <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} baseAllowed={baseAllowed} claimAddons={claimAddons} cabinAddon={cabinAddon} />
+        <BalanceBar used={totalUsed} allowed={totalAllowed} alertAllowed={alertAllowed} baseAllowed={baseAllowed} claimAddons={claimAddons} cabinAddon={cabinAddon} isAdmin={isAdmin} />
 
-        {/* Hospital Bills Breakdown */}
+        {/* Hospital Bills Breakdown — admin only */}
+        {isAdmin && (
         <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-4 md:py-5">
           <div className="flex items-center justify-between mb-4">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">
@@ -1140,6 +1141,7 @@ export default function PatientDetailPage({ params }) {
             </div>
           )}
         </div>
+        )}
 
         {/* Counter entries */}
         {showCounter && (
