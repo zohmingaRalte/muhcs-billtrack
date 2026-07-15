@@ -515,7 +515,16 @@ export default function Dashboard() {
         <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-8 py-5 md:py-6 mb-6 md:mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Monthly Summary</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => router.push("/summary")}
+                className="text-[11px] font-medium text-gray-400 hover:text-gray-700 flex items-center gap-1 transition"
+              >
+                View all
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+                  <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
               <select
                 value={summaryMonth}
                 onChange={e => setSummaryMonth(Number(e.target.value))}
