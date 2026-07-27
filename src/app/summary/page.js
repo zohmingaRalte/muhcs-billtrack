@@ -200,7 +200,7 @@ export default function SummaryPage() {
       <main className="max-w-7xl mx-auto px-5 md:px-14 py-8 md:py-10 space-y-6">
 
         {/* Year stat cards */}
-        <div className={`grid gap-4 ${isAdmin ? "grid-cols-3" : "grid-cols-2"}`}>
+        <div className={`grid gap-4 grid-cols-2 ${isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
           <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-6">
             <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Discharged</p>
             <p className="text-[24px] md:text-[32px] font-semibold text-gray-900 tabular-nums tracking-tight leading-none">{loading ? "—" : yearCount}</p>
@@ -236,13 +236,13 @@ export default function SummaryPage() {
             ) : monthlyData.length === 0 ? (
               <div className="h-64 flex items-center justify-center text-gray-300 text-[13px]">No data for {year}</div>
             ) : (
-              <ResponsiveContainer width="100%" height={260}>
+              <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={monthlyData} barGap={2} barCategoryGap="30%" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
                   <YAxis
                     tickFormatter={v => `₹${(v/1000).toFixed(0)}k`}
-                    tick={{ fontSize: 10, fill: "#9ca3af" }}
-                    axisLine={false} tickLine={false} width={52}
+                    tick={{ fontSize: 9, fill: "#9ca3af" }}
+                    axisLine={false} tickLine={false} width={44}
                   />
                   <Tooltip content={<BarTooltip isAdmin={isAdmin} />} cursor={{ fill: "#f9fafb" }} />
                   {isAdmin && <Bar dataKey="billed" fill="#e5e7eb" radius={[4,4,0,0]} />}
@@ -263,29 +263,27 @@ export default function SummaryPage() {
             ) : donutData.length === 0 ? (
               <div className="h-64 flex items-center justify-center text-gray-300 text-[13px]">No data for {year}</div>
             ) : (
-              <div className="flex items-center gap-4">
-                <div className="shrink-0" style={{ width: 180, height: 220 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={donutData}
-                        cx="50%" cy="50%"
-                        innerRadius={52} outerRadius={82}
-                        paddingAngle={2}
-                        dataKey="value"
-                        strokeWidth={0}
-                      >
-                        {donutData.map((entry, i) => (
-                          <Cell key={i} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<DonutTooltip />} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="flex-1 space-y-1.5 min-w-0">
+              <div className="flex flex-col items-center gap-4">
+                <ResponsiveContainer width="100%" height={200}>
+                  <PieChart>
+                    <Pie
+                      data={donutData}
+                      cx="50%" cy="50%"
+                      innerRadius={52} outerRadius={82}
+                      paddingAngle={2}
+                      dataKey="value"
+                      strokeWidth={0}
+                    >
+                      {donutData.map((entry, i) => (
+                        <Cell key={i} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<DonutTooltip />} />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="w-full grid grid-cols-2 gap-x-4 gap-y-1.5">
                   {donutData.map((d, i) => (
-                    <div key={i} className="flex items-center gap-2">
+                    <div key={i} className="flex items-center gap-2 min-w-0">
                       <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
                       <span className="text-[11px] text-gray-600 truncate flex-1">{d.name}</span>
                       <span className="text-[11px] font-semibold text-gray-500 tabular-nums">{d.pct}%</span>
@@ -307,6 +305,7 @@ export default function SummaryPage() {
               <div className="h-6 w-6 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-gray-50">
@@ -339,6 +338,7 @@ export default function SummaryPage() {
                 </tr>
               </tbody>
             </table>
+            </div>
           )}
         </div>
 
