@@ -42,11 +42,13 @@ function calcDays(start, end) {
 
 function BarTooltip({ active, payload, label, isAdmin }) {
   if (!active || !payload?.length) return null
+  const claimVal  = payload.find(p => p.dataKey === "claim")?.value
+  const billedVal = payload.find(p => p.dataKey === "billed")?.value
   return (
     <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-4 py-3 text-[13px]">
       <p className="font-semibold text-gray-900 mb-1">{label}</p>
-      <p className="text-emerald-600">{formatINR(payload[0]?.value)} claim</p>
-      {isAdmin && payload[1] && <p className="text-gray-400">{formatINR(payload[1]?.value)} billed</p>}
+      {claimVal !== undefined && <p className="text-emerald-600">{formatINR(claimVal)} claim</p>}
+      {isAdmin && billedVal !== undefined && <p className="text-gray-400">{formatINR(billedVal)} billed</p>}
     </div>
   )
 }
