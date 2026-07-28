@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/app/context/UserContext"
 import AuthGuard from "@/app/context/AuthGuard"
-import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
-  PieChart, Pie
-} from "recharts"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
@@ -91,7 +88,7 @@ export default function SummaryPage() {
 
     const { data: admissions } = await supabase
       .from("admissions")
-      .select(`id, admission_date, discharge_date, accommodation, status, total_bill_override, patients(full_name, category)`)
+      .select(`id, admission_date, discharge_date, accommodation, status, total_bill_override, claim_status, patients(full_name, category)`)
       .eq("status", "discharged")
 
     const admIds = (admissions || []).map(a => a.id)
@@ -130,7 +127,7 @@ export default function SummaryPage() {
       const billed    = a.total_bill_override !== null && a.total_bill_override !== undefined
         ? Number(a.total_bill_override) : (entriesMap[a.id] || 0)
       const dod       = new Date(a.discharge_date)
-      return { ...a, claim, billed, dodYear: dod.getFullYear(), dodMonth: dod.getMonth() }
+      return { ...a, claim, billed, dodYear: dod.getFullYear(), dodMonth: dod.getMonth(), claimStatus: a.claim_status || "pending" }
     })
 
     setRecords(enriched)
@@ -162,9 +159,40 @@ export default function SummaryPage() {
       .sort((a, b) => b.value - a.value)
   }, [yearRecords])
 
-  const yearClaim  = yearRecords.reduce((s, r) => s + r.claim, 0)
-  const yearBilled = yearRecords.reduce((s, r) => s + r.billed, 0)
-  const yearCount  = yearRecords.length
+  const yearClaim    = yearRecords.reduce((s, r) => s + r.claim, 0)
+  const yearBilled   = yearRecords.reduce((s, r) => s + r.billed, 0)
+  const yearCount    = yearRecords.length
+  const yearSettled  = yearRecords.filter(r => r.claimStatus === "settled").reduce((s, r) => s + r.claim, 0)
+  const yearPending  = yearRecords.filter(r => r.claimStatus === "pending").reduce((s, r) => s + r.claim, 0)
+
+  // Monthly settled vs pending for non-admin charts
+  const monthlySettlementData = useMemo(() => {
+    const map = {}
+    yearRecords.forEach(r => {
+      const name = MONTH_NAMES[r.dodMonth]
+      if (!map[r.dodMonth]) map[r.dodMonth] = { name, settled: 0, pending: 0 }
+      if (r.claimStatus === "settled") map[r.dodMonth].settled += r.claim
+      else map[r.dodMonth].pending += r.claim
+    })
+    return Object.entries(map).sort(([a],[b]) => Number(a)-Number(b)).map(([,v]) => v)
+  }, [yearRecords])
+
+  // Pending by category donut for non-admin
+  const pendingCatData = useMemo(() => {
+    const catMap = {}
+    yearRecords.filter(r => r.claimStatus === "pending").forEach(r => {
+      const cat = r.patients?.category || "Unknown"
+      catMap[cat] = (catMap[cat] || 0) + r.claim
+    })
+    const total = Object.values(catMap).reduce((s, v) => s + v, 0)
+    return Object.entries(catMap)
+      .map(([name, value]) => ({
+        name, value,
+        color: CATEGORIES.find(c => c.value === name)?.color || "#d1d5db",
+        pct: total > 0 ? ((value / total) * 100).toFixed(1) : "0",
+      }))
+      .sort((a, b) => b.value - a.value)
+  }, [yearRecords])
 
   return (
     <AuthGuard>
@@ -294,6 +322,110 @@ export default function SummaryPage() {
             )}
           </div>
         </div>
+
+        {/* Collection visuals — non-admin only */}
+        {!isAdmin && !loading && yearClaim > 0 && (<>
+
+          {/* Progress bar */}
+          <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Collection Progress</p>
+              <p className="text-[12px] font-semibold text-gray-500 tabular-nums">
+                {yearClaim > 0 ? Math.round((yearSettled / yearClaim) * 100) : 0}% settled
+              </p>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+              <div className="h-full bg-emerald-500 rounded-l-full transition-all duration-700"
+                style={{ width: `${yearClaim > 0 ? (yearSettled / yearClaim) * 100 : 0}%` }} />
+              <div className="h-full bg-red-400 rounded-r-full transition-all duration-700"
+                style={{ width: `${yearClaim > 0 ? (yearPending / yearClaim) * 100 : 0}%` }} />
+            </div>
+            <div className="flex items-center justify-between mt-3">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="text-[11px] text-gray-500">Settled <span className="font-semibold text-emerald-600">{formatINR(yearSettled)}</span></span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-red-400" />
+                  <span className="text-[11px] text-gray-500">Pending <span className="font-semibold text-red-500">{formatINR(yearPending)}</span></span>
+                </div>
+              </div>
+              <span className="text-[11px] text-gray-400 tabular-nums">{formatINR(yearClaim)} total</span>
+            </div>
+          </div>
+
+          {/* Monthly settlement + pending by category */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            {/* Monthly settlement bar */}
+            <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-5 md:py-6">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Monthly Settlement</p>
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500"/><span className="text-[10px] text-gray-400">Settled</span></div>
+                <div className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-red-400"/><span className="text-[10px] text-gray-400">Pending</span></div>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={monthlySettlementData} barGap={2} barCategoryGap="25%" margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <XAxis dataKey="name" tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={v => `₹${(v/1000).toFixed(0)}k`} tick={{ fontSize: 9, fill: "#9ca3af" }} axisLine={false} tickLine={false} width={44} />
+                  <Tooltip content={({ active, payload, label }) => {
+                    if (!active || !payload?.length) return null
+                    const s = payload.find(p => p.dataKey === "settled")?.value || 0
+                    const p = payload.find(p => p.dataKey === "pending")?.value || 0
+                    return (
+                      <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-4 py-3 text-[12px]">
+                        <p className="font-semibold text-gray-900 mb-1">{label}</p>
+                        <p className="text-emerald-600">Settled: {formatINR(s)}</p>
+                        <p className="text-red-500">Pending: {formatINR(p)}</p>
+                      </div>
+                    )
+                  }} cursor={{ fill: "#f9fafb" }} />
+                  <Bar dataKey="settled" fill="#10b981" radius={[4,4,0,0]} />
+                  <Bar dataKey="pending" fill="#f87171" radius={[4,4,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Pending by category donut */}
+            <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-5 md:py-6">
+              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1">Pending by Category</p>
+              <p className="text-[11px] text-gray-300 mb-4">Outstanding claim per category</p>
+              {pendingCatData.length === 0 ? (
+                <div className="h-48 flex items-center justify-center text-emerald-500 text-[13px] font-medium">All claims settled! 🎉</div>
+              ) : (
+                <div className="flex flex-col items-center gap-4">
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie data={pendingCatData} cx="50%" cy="50%" innerRadius={48} outerRadius={78} paddingAngle={2} dataKey="value" strokeWidth={0}>
+                        {pendingCatData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                      </Pie>
+                      <Tooltip content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null
+                        return (
+                          <div className="bg-white border border-gray-100 rounded-xl shadow-lg px-4 py-3 text-[12px]">
+                            <p className="font-semibold text-gray-900">{payload[0].name}</p>
+                            <p style={{ color: payload[0].payload.color }}>{formatINR(payload[0].value)}</p>
+                            <p className="text-gray-400">{payload[0].payload.pct}% of pending</p>
+                          </div>
+                        )
+                      }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="w-full grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    {pendingCatData.map((d, i) => (
+                      <div key={i} className="flex items-center gap-2 min-w-0">
+                        <span className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: d.color }} />
+                        <span className="text-[11px] text-gray-600 truncate flex-1">{d.name}</span>
+                        <span className="text-[11px] font-semibold text-gray-500 tabular-nums">{d.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </>)}
 
         {/* Monthly table */}
         <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm overflow-hidden">
