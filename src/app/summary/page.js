@@ -305,14 +305,13 @@ export default function SummaryPage() {
               <div className="h-6 w-6 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
             </div>
           ) : (
-            <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="border-b border-gray-50">
-                  <th className="px-5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Month</th>
-                  <th className="px-5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Discharged</th>
-                  {isAdmin && <th className="px-5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Total Billed</th>}
-                  <th className="px-5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">MUHCS Claim</th>
+                  <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Month</th>
+                  <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DC</th>
+                  {isAdmin && <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Billed</th>}
+                  <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Claim</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -323,22 +322,21 @@ export default function SummaryPage() {
                   const mBilled = m.reduce((s, r) => s + r.billed, 0)
                   return (
                     <tr key={i} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-5 md:px-7 py-4 font-medium text-gray-900">{name} {year}</td>
-                      <td className="px-5 md:px-7 py-4 text-gray-500 tabular-nums">{m.length}</td>
-                      {isAdmin && <td className="px-5 md:px-7 py-4 text-gray-500 tabular-nums">{formatINR(mBilled)}</td>}
-                      <td className="px-5 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(mClaim)}</td>
+                      <td className="px-4 md:px-7 py-4 font-medium text-gray-900">{name}</td>
+                      <td className="px-4 md:px-7 py-4 text-gray-500 tabular-nums">{m.length}</td>
+                      {isAdmin && <td className="px-4 md:px-7 py-4 text-gray-500 tabular-nums">{formatINR(mBilled)}</td>}
+                      <td className="px-4 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(mClaim)}</td>
                     </tr>
                   )
                 })}
                 <tr className="bg-gray-50 border-t border-gray-200">
-                  <td className="px-5 md:px-7 py-4 font-semibold text-gray-900">Total {year}</td>
-                  <td className="px-5 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{yearCount}</td>
-                  {isAdmin && <td className="px-5 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{formatINR(yearBilled)}</td>}
-                  <td className="px-5 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(yearClaim)}</td>
+                  <td className="px-4 md:px-7 py-4 font-semibold text-gray-900">Total</td>
+                  <td className="px-4 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{yearCount}</td>
+                  {isAdmin && <td className="px-4 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{formatINR(yearBilled)}</td>}
+                  <td className="px-4 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(yearClaim)}</td>
                 </tr>
               </tbody>
             </table>
-            </div>
           )}
         </div>
 
