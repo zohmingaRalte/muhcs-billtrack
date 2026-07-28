@@ -511,6 +511,39 @@ export default function Dashboard() {
           />
         </div>
 
+        {/* Collection Progress Bar */}
+        {!loading && totalClaim > 0 && (() => {
+          const settledPct = Math.round((totalSettled / totalClaim) * 100)
+          const pendingPct = 100 - settledPct
+          return (
+            <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-8 py-5 mb-6 md:mb-8">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Collection Progress</p>
+                <p className="text-[12px] font-semibold text-gray-500 tabular-nums">{settledPct}% settled</p>
+              </div>
+              <div className="h-3 bg-gray-100 rounded-full overflow-hidden flex">
+                <div className="h-full bg-emerald-500 rounded-l-full transition-all duration-700"
+                  style={{ width: `${settledPct}%` }} />
+                <div className="h-full bg-red-400 rounded-r-full transition-all duration-700"
+                  style={{ width: `${pendingPct}%` }} />
+              </div>
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                    <span className="text-[11px] text-gray-500">Settled <span className="font-semibold text-emerald-600">{formatINR(totalSettled)}</span></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-red-400" />
+                    <span className="text-[11px] text-gray-500">Pending <span className="font-semibold text-red-500">{formatINR(totalClaim - totalSettled)}</span></span>
+                  </div>
+                </div>
+                <span className="text-[11px] text-gray-400 tabular-nums">{formatINR(totalClaim)} total</span>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Monthly Summary */}
         <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-8 py-5 md:py-6 mb-6 md:mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-5">
