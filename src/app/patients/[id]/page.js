@@ -445,6 +445,7 @@ export default function PatientDetailPage({ params }) {
   const [editGender, setEditGender] = useState("male")
   const [editContact, setEditContact] = useState("")
   const [editCategory, setEditCategory] = useState("")
+  const [editDod, setEditDod] = useState("")
   const [editAdmissionDate, setEditAdmissionDate] = useState("")
   const [editAccommodation, setEditAccommodation] = useState("general")
   const [editSaving, setEditSaving] = useState(false)
@@ -637,6 +638,7 @@ export default function PatientDetailPage({ params }) {
     setEditContact(admission.patients?.contact || "")
     setEditCategory(admission.patients?.category || "")
     setEditAdmissionDate(admission.admission_date || "")
+    setEditDod(admission.discharge_date ? admission.discharge_date.split("T")[0] : "")
     setEditAccommodation(admission.accommodation || "general")
     setEditError("")
     setEditing(true)
@@ -664,12 +666,12 @@ export default function PatientDetailPage({ params }) {
 
     if (patErr) { setEditError(patErr.message); setEditSaving(false); return }
 
+    const admUpdate = { admission_date: editAdmissionDate, accommodation: editAccommodation }
+    if (isAdmin && editDod) admUpdate.discharge_date = editDod
+
     const { error: admErr } = await supabase
       .from("admissions")
-      .update({
-        admission_date: editAdmissionDate,
-        accommodation: editAccommodation,
-      })
+      .update(admUpdate)
       .eq("id", id)
 
     if (admErr) { setEditError(admErr.message); setEditSaving(false); return }
@@ -966,6 +968,16 @@ export default function PatientDetailPage({ params }) {
                     className={editInputClass()}
                   />
                 </EditField>
+                {isAdmin && admission.discharge_date && (
+                  <EditField label="Discharge Date">
+                    <input
+                      type="date"
+                      value={editDod}
+                      onChange={e => setEditDod(e.target.value)}
+                      className={editInputClass()}
+                    />
+                  </EditField>
+                )}
               </div>
 
               <EditField label="Ward Type">
