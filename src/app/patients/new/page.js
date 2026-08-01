@@ -159,61 +159,61 @@ export default function NewPatientPage() {
                 />
               </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Age" required error={errors.age}>
-                  <div className="flex gap-2">
-                    <input
-                      type="number"
-                      placeholder={ageUnit === "months" ? "e.g. 3" : ageUnit === "weeks" ? "e.g. 6" : ageUnit === "days" ? "e.g. 10" : "e.g. 45"}
-                      value={age}
-                      onChange={e => setAge(e.target.value)}
-                      min="1"
-                      max={ageUnit === "months" ? "11" : ageUnit === "weeks" ? "51" : ageUnit === "days" ? "90" : "120"}
-                      className={`flex-1 ${inputClass(errors.age)}`}
-                    />
-                    <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
-                      {[
-                        { value: "years",  label: "Yrs" },
-                        { value: "months", label: "Mo"  },
-                        { value: "weeks",  label: "Wks" },
-                        { value: "days",   label: "Days"},
-                      ].map(u => (
-                        <button
-                          key={u.value}
-                          type="button"
-                          onClick={() => { setAgeUnit(u.value); setAge("") }}
-                          className={`px-2.5 py-3 text-[11px] font-semibold transition ${
-                            ageUnit === u.value
-                              ? "bg-gray-900 text-white"
-                              : "bg-white text-gray-500 hover:bg-gray-50"
-                          }`}
-                        >
-                          {u.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </Field>
-
-                <Field label="Gender">
-                  <div className="grid grid-cols-2 gap-2">
-                    {["male", "female"].map(g => (
+              {/* Age — full width on mobile */}
+              <Field label="Age" required error={errors.age}>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    placeholder={ageUnit === "months" ? "e.g. 3" : ageUnit === "weeks" ? "e.g. 6" : ageUnit === "days" ? "e.g. 10" : "e.g. 45"}
+                    value={age}
+                    onChange={e => setAge(e.target.value)}
+                    min="1"
+                    max={ageUnit === "months" ? "11" : ageUnit === "weeks" ? "51" : ageUnit === "days" ? "90" : "120"}
+                    className={`flex-1 min-w-0 ${inputClass(errors.age)}`}
+                  />
+                  <div className="flex rounded-xl border border-gray-200 overflow-hidden shrink-0">
+                    {[
+                      { value: "years",  label: "Yrs" },
+                      { value: "months", label: "Mo"  },
+                      { value: "weeks",  label: "Wks" },
+                      { value: "days",   label: "Days"},
+                    ].map(u => (
                       <button
-                        key={g}
+                        key={u.value}
                         type="button"
-                        onClick={() => setGender(g)}
-                        className={`py-3 rounded-xl border-2 text-[13px] font-semibold capitalize transition ${
-                          gender === g
-                            ? "border-gray-900 bg-gray-900 text-white"
-                            : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                        onClick={() => { setAgeUnit(u.value); setAge("") }}
+                        className={`px-2 md:px-2.5 py-3 text-[11px] font-semibold transition ${
+                          ageUnit === u.value
+                            ? "bg-gray-900 text-white"
+                            : "bg-white text-gray-500 hover:bg-gray-50"
                         }`}
                       >
-                        {g}
+                        {u.label}
                       </button>
                     ))}
                   </div>
-                </Field>
-              </div>
+                </div>
+              </Field>
+
+              {/* Gender — full width on mobile */}
+              <Field label="Gender">
+                <div className="grid grid-cols-2 gap-2">
+                  {["male", "female"].map(g => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGender(g)}
+                      className={`py-3 rounded-xl border-2 text-[13px] font-semibold capitalize transition ${
+                        gender === g
+                          ? "border-gray-900 bg-gray-900 text-white"
+                          : "border-gray-200 bg-white text-gray-500 hover:border-gray-300"
+                      }`}
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </Field>
 
               <Field label="Contact Number">
                 <input
