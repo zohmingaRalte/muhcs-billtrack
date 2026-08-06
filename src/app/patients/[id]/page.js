@@ -433,6 +433,10 @@ export default function PatientDetailPage({ params }) {
   const [rates, setRates] = useState({ muhcs: 0, cabin: 0, bed: 0 })
   const [loading, setLoading] = useState(true)
   const [showDischargeModal, setShowDischargeModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal]       = useState(false)
+  const [deleteConfirm, setDeleteConfirm]           = useState("")
+  const [deleting, setDeleting]                     = useState(false)
+  const [deleteError, setDeleteError]               = useState("")
   const [dischargeDate, setDischargeDate] = useState("")
   const [discharging, setDischarging] = useState(false)
   const [dischargeError, setDischargeError] = useState("")
@@ -722,9 +726,65 @@ export default function PatientDetailPage({ params }) {
     fetchAll()
   }
 
+  async function handleDeletePatient() {
+    if (deleteConfirm !== admission.patients?.full_name) {
+      setDeleteError("Name doesn't match."); return
+    }
+    setDeleting(true)
+    await Promise.all([
+      supabase.from("lab_entries").delete().eq("admission_id", id),
+      supabase.from("pharma_entries").delete().eq("admission_id", id),
+      supabase.from("xray_entries").delete().eq("admission_id", id),
+      supabase.from("ecg_entries").delete().eq("admission_id", id),
+      supabase.from("counter_entries").delete().eq("admission_id", id),
+      supabase.from("claim_addons").delete().eq("admission_id", id),
+      supabase.from("patient_order").delete().eq("admission_id", id),
+    ])
+    await supabase.from("admissions").delete().eq("id", id)
+    await supabase.from("patients").delete().eq("id", admission.patient_id)
+    setDeleting(false)
+    router.push("/")
+  }
+
   return (
     <AuthGuard>
     <div className="min-h-screen bg-[#f5f5f7]">
+
+      {/* Delete Modal — admin only */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => { setShowDeleteModal(false); setDeleteConfirm(""); setDeleteError("") }} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
+            <div>
+              <h2 className="text-[17px] font-semibold text-gray-900">Delete Patient</h2>
+              <p className="text-[13px] text-gray-400 mt-1">This will permanently delete the patient and all their entries. This cannot be undone.</p>
+            </div>
+            <div className="bg-red-50 rounded-xl px-4 py-3">
+              <p className="text-[12px] font-semibold text-red-600 uppercase tracking-widest mb-1">Confirm by typing patient name</p>
+              <p className="text-[13px] text-red-800 font-medium">{admission.patients?.full_name}</p>
+            </div>
+            <input
+              type="text"
+              placeholder="Type patient name to confirm"
+              value={deleteConfirm}
+              onChange={e => { setDeleteConfirm(e.target.value); setDeleteError("") }}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-400 transition"
+            />
+            {deleteError && <p className="text-[12px] text-red-500">{deleteError}</p>}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => { setShowDeleteModal(false); setDeleteConfirm(""); setDeleteError("") }}
+                className="flex-1 py-3 text-[13px] font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+              >Cancel</button>
+              <button
+                onClick={handleDeletePatient}
+                disabled={deleting}
+                className="flex-1 py-3 text-[13px] font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-50 rounded-xl transition"
+              >{deleting ? "Deleting…" : "Delete Patient"}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Discharge Modal */}
       {showDischargeModal && (
@@ -809,6 +869,19 @@ export default function PatientDetailPage({ params }) {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* Delete button — admin only */}
+            {isAdmin && (
+              <button
+                onClick={() => { setDeleteConfirm(""); setDeleteError(""); setShowDeleteModal(true) }}
+                className="flex items-center justify-center h-8 w-8 rounded-full bg-white border border-red-200 hover:bg-red-50 text-red-400 hover:text-red-600 transition shadow-sm"
+                title="Delete patient"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                  <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </button>
+            )}
+
             {/* Discharge button — admin/counter only, active patients only */}
             {isAdminOrCounter && isActive && (
               <button
