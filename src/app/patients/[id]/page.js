@@ -437,9 +437,10 @@ export default function PatientDetailPage({ params }) {
   const [deleteConfirm, setDeleteConfirm]           = useState("")
   const [deleting, setDeleting]                     = useState(false)
   const [deleteError, setDeleteError]               = useState("")
-  const [dischargeDate, setDischargeDate] = useState("")
-  const [discharging, setDischarging] = useState(false)
-  const [dischargeError, setDischargeError] = useState("")
+  const [dischargeDate, setDischargeDate]         = useState("")
+  const [actualDischargeDate, setActualDischargeDate] = useState("")
+  const [discharging, setDischarging]             = useState(false)
+  const [dischargeError, setDischargeError]       = useState("")
 
   // Edit state
   const [editing, setEditing] = useState(false)
@@ -450,6 +451,7 @@ export default function PatientDetailPage({ params }) {
   const [editContact, setEditContact] = useState("")
   const [editCategory, setEditCategory] = useState("")
   const [editDod, setEditDod] = useState("")
+  const [editActualDod, setEditActualDod] = useState("")
   const [editAdmissionDate, setEditAdmissionDate] = useState("")
   const [editAccommodation, setEditAccommodation] = useState("general")
   const [editSaving, setEditSaving] = useState(false)
@@ -476,6 +478,7 @@ export default function PatientDetailPage({ params }) {
         patient_id,
         admission_date,
         discharge_date,
+        actual_discharge_date,
         accommodation,
         status,
         total_bill_override,
@@ -643,6 +646,7 @@ export default function PatientDetailPage({ params }) {
     setEditCategory(admission.patients?.category || "")
     setEditAdmissionDate(admission.admission_date || "")
     setEditDod(admission.discharge_date ? admission.discharge_date.split("T")[0] : "")
+    setEditActualDod(admission.actual_discharge_date ? admission.actual_discharge_date.split("T")[0] : "")
     setEditAccommodation(admission.accommodation || "general")
     setEditError("")
     setEditing(true)
@@ -672,6 +676,7 @@ export default function PatientDetailPage({ params }) {
 
     const admUpdate = { admission_date: editAdmissionDate, accommodation: editAccommodation }
     if (isAdmin && editDod) admUpdate.discharge_date = editDod
+    if (isAdmin) admUpdate.actual_discharge_date = editActualDod || null
 
     const { error: admErr } = await supabase
       .from("admissions")
@@ -714,10 +719,13 @@ export default function PatientDetailPage({ params }) {
     discharge.setHours(0,0,0,0)
     if (discharge < admit) { setDischargeError("Discharge date cannot be before admission date."); return }
 
+    const updateData = { discharge_date: dischargeDate, status: "discharged" }
+    if (isAdmin && actualDischargeDate) updateData.actual_discharge_date = actualDischargeDate
+
     setDischarging(true)
     const { error } = await supabase
       .from("admissions")
-      .update({ discharge_date: dischargeDate, status: "discharged" })
+      .update(updateData)
       .eq("id", id)
 
     if (error) { setDischargeError(error.message); setDischarging(false); return }
@@ -814,6 +822,22 @@ export default function PatientDetailPage({ params }) {
               )}
             </div>
 
+            {/* Actual DOD — admin only */}
+            {isAdmin && (
+              <div>
+                <label className="block text-[12px] font-semibold text-gray-500 mb-1">
+                  Actual DOD <span className="text-[11px] font-normal text-gray-400">(record only, no effect on bill)</span>
+                </label>
+                <input
+                  type="date"
+                  value={actualDischargeDate}
+                  onChange={e => setActualDischargeDate(e.target.value)}
+                  min={admission.admission_date}
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
+                />
+              </div>
+            )}
+
             {/* Days preview */}
             {dischargeDate && (
               <div className="bg-gray-50 rounded-xl px-4 py-3">
@@ -885,7 +909,7 @@ export default function PatientDetailPage({ params }) {
             {/* Discharge button — admin/counter only, active patients only */}
             {isAdminOrCounter && isActive && (
               <button
-                onClick={() => { setDischargeDate(""); setDischargeError(""); setShowDischargeModal(true) }}
+                onClick={() => { setDischargeDate(""); setActualDischargeDate(""); setDischargeError(""); setShowDischargeModal(true) }}
                 className="hidden md:flex items-center gap-1.5 text-[13px] font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 px-4 py-2 rounded-full transition shadow-sm"
               >
                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
@@ -1051,6 +1075,16 @@ export default function PatientDetailPage({ params }) {
                     />
                   </EditField>
                 )}
+                {isAdmin && (
+                  <EditField label="Actual DOD">
+                    <input
+                      type="date"
+                      value={editActualDod}
+                      onChange={e => setEditActualDod(e.target.value)}
+                      className={editInputClass()}
+                    />
+                  </EditField>
+                )}
               </div>
 
               <EditField label="Ward Type">
@@ -1122,6 +1156,9 @@ export default function PatientDetailPage({ params }) {
                 label="DOD"
                 value={admission.discharge_date ? formatDate(admission.discharge_date) : "Ongoing"}
               />
+              {isAdmin && admission.actual_discharge_date && (
+                <InfoItem label="Actual DOD" value={formatDate(admission.actual_discharge_date)} />
+              )}
               <InfoItem label="Days" value={`${days} day${days !== 1 ? "s" : ""}`} />
               {admission.patients?.category && (
                 <InfoItem label="Category" value={admission.patients.category} />
@@ -1312,7 +1349,7 @@ export default function PatientDetailPage({ params }) {
         {/* Mobile discharge button */}
         {isAdminOrCounter && isActive && (
           <button
-            onClick={() => { setDischargeDate(""); setDischargeError(""); setShowDischargeModal(true) }}
+            onClick={() => { setDischargeDate(""); setActualDischargeDate(""); setDischargeError(""); setShowDischargeModal(true) }}
             className="md:hidden w-full py-3.5 text-[14px] font-semibold text-white bg-gray-900 hover:bg-gray-700 rounded-xl transition flex items-center justify-center gap-2"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
