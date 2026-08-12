@@ -175,7 +175,7 @@ export default function MasterDashboard() {
   const [sortDir, setSortDir]         = useState("asc") // oldest discharged first
 
   useEffect(() => {
-    if (user && user.role !== "admin") router.replace("/")
+    if (user && !user.role) router.replace("/")
   }, [user])
 
   useEffect(() => { fetchAll() }, [])
@@ -429,7 +429,7 @@ export default function MasterDashboard() {
             </button>
             <div>
               <p className="text-[11px] font-semibold tracking-widest text-gray-400 uppercase mb-0.5">Admin</p>
-              <h1 className="text-[18px] md:text-[22px] font-semibold text-gray-900 tracking-tight leading-none">Master Dashboard</h1>
+              <h1 className="text-[18px] md:text-[22px] font-semibold text-gray-900 tracking-tight leading-none">{isAdmin ? "Master Dashboard" : "Claim Tracker"}</h1>
             </div>
           </div>
           <div className="h-8 w-8 md:h-9 md:w-9 rounded-full bg-gray-900 flex items-center justify-center">
@@ -771,7 +771,7 @@ export default function MasterDashboard() {
               <table className="hidden md:table w-full text-[13px]">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {["#","Patient","Category","DOD","Ward","Hospital Bill","MUHCS Claim","Received","Pending","Status"].map(h => (
+                    {["#","Patient","Category","DOD","Ward", ...(isAdmin ? ["Hospital Bill"] : []),"MUHCS Claim","Received","Pending","Status"].map(h => (
                       <th key={h} className="px-4 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest whitespace-nowrap first:pl-6 last:pr-6">{h}</th>
                     ))}
                   </tr>
@@ -800,7 +800,7 @@ export default function MasterDashboard() {
                         <td className="px-4 py-4 text-gray-500 capitalize whitespace-nowrap">
                           {r.accommodation === "deluxe" ? "Deluxe" : r.accommodation === "pedia" ? "Pedia" : r.accommodation}
                         </td>
-                        <td className="px-4 py-4 tabular-nums text-gray-700">{formatINR(r.hospitalBill)}</td>
+                        {isAdmin && <td className="px-4 py-4 tabular-nums text-gray-700">{formatINR(r.hospitalBill)}</td>}
                         <td className="px-4 py-4 tabular-nums font-semibold text-gray-900">{formatINR(r.claim)}</td>
                         <td className="px-4 py-4 tabular-nums text-emerald-600 font-semibold">{r.received > 0 ? formatINR(r.received) : "—"}</td>
                         <td className={`px-4 py-4 tabular-nums font-semibold ${pending > 0 ? "text-red-500" : "text-gray-400"}`}>
