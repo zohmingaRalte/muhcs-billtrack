@@ -149,6 +149,7 @@ function ClaimCard({ claim, received, onViewDetails }) {
 export default function MasterDashboard() {
   const router = useRouter()
   const { user } = useUser()
+  const isAdmin = user?.role === "admin"
 
   const [records, setRecords]         = useState([])
   const [rates, setRates]             = useState({ muhcs: 0, cabin: 0, deluxe: 0, bed: 0 })
