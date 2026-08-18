@@ -32,9 +32,9 @@ function formatINR(n) {
 
 function calcDays(start, end) {
   if (!end) return 1
-  const s = new Date(start); s.setHours(0,0,0,0)
-  const e = new Date(end);   e.setHours(0,0,0,0)
-  return Math.max(Math.round((e - s) / 86400000), 1)
+  const [sy, sm, sd] = start.split("T")[0].split("-").map(Number)
+  const [ey, em, ed] = end.split("T")[0].split("-").map(Number)
+  return Math.max(Math.round((new Date(ey, em-1, ed) - new Date(sy, sm-1, sd)) / 86400000), 1)
 }
 
 function BarTooltip({ active, payload, label, isAdmin }) {

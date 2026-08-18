@@ -45,22 +45,27 @@ function getCategoryColor(category) {
 }
 
 
+function parseLocalDate(str) {
+  if (!str) return null
+  const [y, m, d] = str.split("T")[0].split("-").map(Number)
+  return new Date(y, m - 1, d)
+}
+
 function calcDays(admissionDate, dischargeDate) {
-  const s = new Date(admissionDate)
-  s.setHours(0, 0, 0, 0)
+  const s = parseLocalDate(admissionDate)
   if (dischargeDate) {
-    const e = new Date(dischargeDate)
-    e.setHours(0, 0, 0, 0)
+    const e = parseLocalDate(dischargeDate)
     return Math.max(Math.round((e - s) / 86400000), 1)
   }
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  const today = new Date(); today.setHours(0,0,0,0)
   return Math.round((today - s) / 86400000) + 1
 }
 
 function formatDate(date) {
   if (!date) return "—"
-  return new Date(date).toLocaleDateString("en-GB", {
+  const [year, month, day] = date.split("T")[0].split("-")
+  const d = new Date(Number(year), Number(month) - 1, Number(day))
+  return d.toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   })
 }

@@ -76,13 +76,16 @@ function formatINR(n) {
 
 function formatDate(d) {
   if (!d) return "—"
-  return new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
+  const [y, m, day] = d.split("T")[0].split("-").map(Number)
+  return new Date(y, m - 1, day).toLocaleDateString("en-GB", {
+    day: "2-digit", month: "short", year: "numeric",
+  })
 }
 
 function calcDays(start, end) {
-  const s = new Date(start); s.setHours(0,0,0,0)
-  const e = new Date(end);   e.setHours(0,0,0,0)
-  return Math.max(Math.round((e - s) / 86400000), 1)
+  const [sy, sm, sd] = start.split("T")[0].split("-").map(Number)
+  const [ey, em, ed] = end.split("T")[0].split("-").map(Number)
+  return Math.max(Math.round((new Date(ey, em-1, ed) - new Date(sy, sm-1, sd)) / 86400000), 1)
 }
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────

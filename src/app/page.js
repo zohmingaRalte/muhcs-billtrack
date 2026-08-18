@@ -10,8 +10,10 @@ import AuthGuard from "@/app/context/AuthGuard"
 
 function calcDischarged(start, end) {
   if (!end) return 1
-  const s = new Date(start); s.setHours(0,0,0,0)
-  const e = new Date(end);   e.setHours(0,0,0,0)
+  const [sy, sm, sd] = start.split("T")[0].split("-").map(Number)
+  const [ey, em, ed] = end.split("T")[0].split("-").map(Number)
+  const s = new Date(sy, sm - 1, sd)
+  const e = new Date(ey, em - 1, ed)
   return Math.max(Math.round((e - s) / 86400000), 1)
 }
 
@@ -29,7 +31,8 @@ function getDays(a) {
 
 function formatDate(date) {
   if (!date) return "—"
-  return new Date(date).toLocaleDateString("en-GB", {
+  const [y, m, d] = date.split("T")[0].split("-").map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
     day: "2-digit", month: "short", year: "numeric",
   })
 }
