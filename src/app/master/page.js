@@ -189,10 +189,11 @@ export default function MasterDashboard() {
 
     const { data: ratesData } = await supabase.from("rate_master").select("*")
     const muhcs      = ratesData?.find(r => r.description.toLowerCase().includes("muhcs"))?.amount || 0
-    const cabin      = ratesData?.find(r => r.description.toLowerCase().includes("cabin"))?.amount || 0
+    const cabin      = ratesData?.find(r => r.description.toLowerCase().includes("cabin") && !r.description.toLowerCase().includes("semi"))?.amount || 0
     const bed        = ratesData?.find(r => r.description.toLowerCase().includes("bed"))?.amount || 0
-    const deluxe= ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
-    const rateMap    = { muhcs, cabin, bed, deluxe }
+    const deluxe     = ratesData?.find(r => r.description.toLowerCase().includes("deluxe"))?.amount || 0
+    const semiCabin  = ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
+    const rateMap    = { muhcs, cabin, bed, deluxe, semiCabin }
     setRates(rateMap)
 
     const { data: admissions } = await supabase
@@ -222,12 +223,13 @@ export default function MasterDashboard() {
       admissions.forEach(a => {
         const days = calcDays(a.admission_date, a.discharge_date)
         const wardAddon = a.accommodation === "cabin" ? days * cabin
-          : a.accommodation === "deluxe" ? days * deluxe : 0
+          : a.accommodation === "deluxe" ? days * deluxe
+          : a.accommodation === "semi_cabin" ? days * semiCabin : 0
         const addonsTotal = (addons || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
         const claim = days * muhcs + wardAddon + addonsTotal
 
         const sum = (arr) => (arr || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
-        const miscRate = (a.accommodation === "cabin" || a.accommodation === "deluxe") ? 100 : 50
+        const miscRate = 50 // flat for all wards
         const miscTotal = days * miscRate
         const counterNoMisc = (counter || []).filter(e => e.admission_id === a.id && e.charge_type !== "misc").reduce((s, e) => s + Number(e.amount), 0)
         const entriesTotal = sum(lab) + sum(pharma) + sum(xray) + counterNoMisc + sum(ecg) + miscTotal
@@ -802,7 +804,7 @@ export default function MasterDashboard() {
                         <td className="px-4 py-4 text-gray-500">{r.patients?.category || "—"}</td>
                         <td className="px-4 py-4 text-gray-500 whitespace-nowrap">{formatDate(r.discharge_date)}</td>
                         <td className="px-4 py-4 text-gray-500 capitalize whitespace-nowrap">
-                          {r.accommodation === "deluxe" ? "Deluxe" : r.accommodation === "pedia" ? "Pedia" : r.accommodation}
+                          {r.accommodation === "deluxe" ? "Deluxe" : r.accommodation === "semi_cabin" ? "Semi Cabin" : r.accommodation === "pedia" ? "Pedia" : r.accommodation}
                         </td>
                         {isAdmin && <td className="px-4 py-4 tabular-nums text-gray-700">{formatINR(r.hospitalBill)}</td>}
                         <td className="px-4 py-4 tabular-nums font-semibold text-gray-900">{formatINR(r.claim)}</td>

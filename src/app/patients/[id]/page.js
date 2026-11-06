@@ -502,10 +502,11 @@ export default function PatientDetailPage({ params }) {
     // Rates
     const { data: ratesData } = await supabase.from("rate_master").select("*")
     const muhcs = ratesData?.find(r => r.description.toLowerCase().includes("muhcs"))?.amount || 0
-    const cabin = ratesData?.find(r => r.description.toLowerCase().includes("cabin"))?.amount || 0
+    const cabin = ratesData?.find(r => r.description.toLowerCase().includes("cabin") && !r.description.toLowerCase().includes("semi"))?.amount || 0
     const bed = ratesData?.find(r => r.description.toLowerCase().includes("bed"))?.amount || 0
-    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("deluxe") || r.description.toLowerCase().includes("semi"))?.amount || 0
-    setRates({ muhcs, cabin, bed, deluxe })
+    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("deluxe"))?.amount || 0
+    const semiCabin = ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
+    setRates({ muhcs, cabin, bed, deluxe, semiCabin })
 
     // Lab entries with creator name
     const { data: lab } = await supabase
@@ -586,9 +587,10 @@ export default function PatientDetailPage({ params }) {
 
   const wardRate = admission.accommodation === "cabin" ? rates.cabin
     : admission.accommodation === "deluxe" ? rates.deluxe
+    : admission.accommodation === "semi_cabin" ? rates.semiCabin
     : rates.bed // general and pedia both use bed rate
 
-  const hasWardAddon = admission.accommodation === "cabin" || admission.accommodation === "deluxe"
+  const hasWardAddon = admission.accommodation === "cabin" || admission.accommodation === "deluxe" || admission.accommodation === "semi_cabin"
 
   const cabinAddon = hasWardAddon ? days * wardRate : 0
   const claimAddonsTotal = claimAddons.reduce((s, a) => s + Number(a.amount), 0)
@@ -601,7 +603,7 @@ export default function PatientDetailPage({ params }) {
   // Bed fee
   const bedFee = days * wardRate
 
-  const MISC_RATE = (admission.accommodation === "cabin" || admission.accommodation === "deluxe") ? 100 : 50
+  const MISC_RATE = 50 // flat for all wards
   const labTotal = labEntries.reduce((s, e) => s + Number(e.amount), 0)
   const pharmaTotal = pharmaEntries.reduce((s, e) => s + Number(e.amount), 0)
   const xrayTotal = xrayEntries.reduce((s, e) => s + Number(e.amount), 0)
@@ -1093,11 +1095,12 @@ export default function PatientDetailPage({ params }) {
               </div>
 
               <EditField label="Ward Type">
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
                     {[
                       { value: "general",      label: "General",      sub: "₹400/day" },
                       { value: "pedia",        label: "Pedia",        sub: "₹400/day" },
-                      { value: "deluxe", label: "Deluxe", sub: "₹2,500/day" },
+                      { value: "semi_cabin",   label: "Semi Cabin",   sub: "₹800/day" },
+                      { value: "deluxe",       label: "Deluxe",       sub: "₹2,500/day" },
                       { value: "cabin",        label: "Cabin",        sub: "₹1,500/day" },
                     ].map(opt => (
                       <button
@@ -1154,6 +1157,7 @@ export default function PatientDetailPage({ params }) {
               <InfoItem label="Ward" value={
                 admission.accommodation === "cabin" ? "Cabin" :
                 admission.accommodation === "deluxe" ? "Deluxe" :
+                admission.accommodation === "semi_cabin" ? "Semi Cabin" :
                 admission.accommodation === "pedia" ? "Pedia" : "General"
               } />
               <InfoItem label="DOA" value={formatDate(admission.admission_date)} />

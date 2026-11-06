@@ -142,13 +142,15 @@ export default function Dashboard() {
 
     const { data: ratesData } = await supabase.from("rate_master").select("*")
     const muhcs = ratesData?.find(r => r.description.toLowerCase().includes("muhcs"))?.amount || 0
-    const cabin = ratesData?.find(r => r.description.toLowerCase().includes("cabin"))?.amount || 0
-    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
-    setRates({ muhcs, cabin, deluxe })
+    const cabin = ratesData?.find(r => r.description.toLowerCase().includes("cabin") && !r.description.toLowerCase().includes("semi"))?.amount || 0
+    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("deluxe"))?.amount || 0
+    const semiCabin = ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
+    setRates({ muhcs, cabin, deluxe, semiCabin })
 
     const getWardAddon = (a, days) => {
       if (a.accommodation === "cabin") return days * cabin
       if (a.accommodation === "deluxe") return days * deluxe
+      if (a.accommodation === "semi_cabin") return days * semiCabin
       return 0 // general and pedia have no addon
     }
 
@@ -185,7 +187,8 @@ export default function Dashboard() {
       settledAdmissions.forEach(a => {
         const days = calcDischarged(a.admission_date, a.discharge_date)
         const wardAddon = a.accommodation === "cabin" ? days * cabin
-          : a.accommodation === "deluxe" ? days * deluxe : 0
+          : a.accommodation === "deluxe" ? days * deluxe
+          : a.accommodation === "semi_cabin" ? days * semiCabin : 0
         const addonAmt = (settledAddons || []).filter(x => x.admission_id === a.id).reduce((s, x) => s + Number(x.amount), 0)
         settledTotal += days * muhcs + wardAddon + addonAmt
       })
@@ -211,7 +214,7 @@ export default function Dashboard() {
         const allowed = days * muhcs + getWardAddon(a, days) + addonsTotal
         const hasOverride = a.total_bill_override !== null && a.total_bill_override !== undefined
         const sum = (arr, id) => (arr || []).filter(e => e.admission_id === id).reduce((s, e) => s + Number(e.amount), 0)
-        const miscRate = (a.accommodation === "cabin" || a.accommodation === "deluxe") ? 100 : 50
+        const miscRate = 50 // flat for all wards
         const miscTotal = days * miscRate
         const counterNoMisc = (counter || []).filter(e => e.charge_type !== "misc")
         const counterNoMiscSum = counterNoMisc.filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
@@ -295,7 +298,8 @@ export default function Dashboard() {
   const monthlyClaim = monthlyDischarged.reduce((total, a) => {
     const days = calcDischarged(a.admission_date, a.discharge_date)
     const addon = a.accommodation === "cabin" ? days * rates.cabin
-      : a.accommodation === "deluxe" ? days * rates.deluxe : 0
+      : a.accommodation === "deluxe" ? days * rates.deluxe
+      : a.accommodation === "semi_cabin" ? days * rates.semiCabin : 0
     const addonsClaim = balanceMap[a.id]?.allowed
       ? balanceMap[a.id].allowed - (days * rates.muhcs + addon)
       : 0
@@ -677,7 +681,8 @@ export default function Dashboard() {
                 { value: "all",          label: "All"         },
                 { value: "general",      label: "General"     },
                 { value: "pedia",        label: "Pedia"       },
-                { value: "deluxe", label: "Deluxe"},
+                { value: "semi_cabin",   label: "Semi Cabin"  },
+                { value: "deluxe",       label: "Deluxe"      },
                 { value: "cabin",        label: "Cabin"       },
               ].map(w => {
                 const count = w.value === "all"
@@ -852,7 +857,7 @@ export default function Dashboard() {
                               </div>
                             )}
                           </td>
-                          <td className="py-4 text-gray-500 capitalize">{a.accommodation === "deluxe" ? "Deluxe" : a.accommodation === "pedia" ? "Pedia" : a.accommodation}</td>
+                          <td className="py-4 text-gray-500 capitalize">{a.accommodation === "deluxe" ? "Deluxe" : a.accommodation === "semi_cabin" ? "Semi Cabin" : a.accommodation === "pedia" ? "Pedia" : a.accommodation}</td>
                           <td className="py-4 text-gray-500">{formatDate(a.admission_date)}</td>
                           {activeTab === "discharged" && (
                             <td className="py-4 text-gray-500">{formatDate(a.discharge_date)}</td>
@@ -904,7 +909,7 @@ export default function Dashboard() {
                             </div>
                           )}
                           <p className="text-[12px] text-gray-400 mt-1 capitalize">
-                            {a.accommodation === "deluxe" ? "Deluxe" : a.accommodation === "pedia" ? "Pedia" : a.accommodation} · {formatDate(a.admission_date)}
+                            {a.accommodation === "deluxe" ? "Deluxe" : a.accommodation === "semi_cabin" ? "Semi Cabin" : a.accommodation === "pedia" ? "Pedia" : a.accommodation} · {formatDate(a.admission_date)}
                             {activeTab === "discharged" && a.discharge_date ? ` → ${formatDate(a.discharge_date)}` : ""}
                             {" "}· {getDays(a)}d
                           </p>

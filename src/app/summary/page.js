@@ -82,9 +82,10 @@ export default function SummaryPage() {
 
     const { data: ratesData } = await supabase.from("rate_master").select("*")
     const muhcs  = ratesData?.find(r => r.description.toLowerCase().includes("muhcs"))?.amount || 0
-    const cabin  = ratesData?.find(r => r.description.toLowerCase().includes("cabin"))?.amount || 0
-    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("deluxe") || r.description.toLowerCase().includes("semi"))?.amount || 0
-    setRates({ muhcs, cabin, deluxe })
+    const cabin  = ratesData?.find(r => r.description.toLowerCase().includes("cabin") && !r.description.toLowerCase().includes("semi"))?.amount || 0
+    const deluxe = ratesData?.find(r => r.description.toLowerCase().includes("deluxe"))?.amount || 0
+    const semiCabin = ratesData?.find(r => r.description.toLowerCase().includes("semi"))?.amount || 0
+    setRates({ muhcs, cabin, deluxe, semiCabin })
 
     const { data: admissions } = await supabase
       .from("admissions")
@@ -112,7 +113,7 @@ export default function SummaryPage() {
 
       admissions.forEach(a => {
         const sum = (arr) => (arr || []).filter(e => e.admission_id === a.id).reduce((s, e) => s + Number(e.amount), 0)
-        const miscRate = (a.accommodation === "cabin" || a.accommodation === "deluxe") ? 100 : 50
+        const miscRate = 50 // flat for all wards
         const days = calcDays(a.admission_date, a.discharge_date)
         const counterNoMisc = (counter || []).filter(e => e.admission_id === a.id && e.charge_type !== "misc").reduce((s, e) => s + Number(e.amount), 0)
         entriesMap[a.id] = sum(lab) + sum(pharma) + sum(xray) + counterNoMisc + sum(ecg) + days * miscRate
@@ -122,7 +123,8 @@ export default function SummaryPage() {
     const enriched = (admissions || []).map(a => {
       const days      = calcDays(a.admission_date, a.discharge_date)
       const wardAddon = a.accommodation === "cabin" ? days * cabin
-        : a.accommodation === "deluxe" ? days * deluxe : 0
+        : a.accommodation === "deluxe" ? days * deluxe
+        : a.accommodation === "semi_cabin" ? days * semiCabin : 0
       const claim     = days * muhcs + wardAddon + (addonsMap[a.id] || 0)
       const billed    = a.total_bill_override !== null && a.total_bill_override !== undefined
         ? Number(a.total_bill_override) : (entriesMap[a.id] || 0)
