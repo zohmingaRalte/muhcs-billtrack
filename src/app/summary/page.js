@@ -30,6 +30,12 @@ function formatINR(n) {
   return `₹${Number(n || 0).toLocaleString("en-IN")}`
 }
 
+// diff = Claim − Billed  →  "+" gain, "−" loss
+function formatDiff(n) {
+  if (!n) return "—"
+  return `${n > 0 ? "+" : "−"}${formatINR(Math.abs(n))}`
+}
+
 function calcDays(start, end) {
   if (!end) return 1
   const [sy, sm, sd] = start.split("T")[0].split("-").map(Number)
@@ -198,10 +204,17 @@ export default function SummaryPage() {
 
   return (
     <AuthGuard>
-    <div className="min-h-screen bg-[#f5f5f7]">
+    <style>{`
+      @media print {
+        @page { size: A4; margin: 14mm; }
+        body { background: #fff !important; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
+    `}</style>
+    <div className="min-h-screen bg-[#f5f5f7] print:bg-white">
 
       {/* Header */}
-      <header className="sticky top-0 z-10 bg-[#f5f5f7]/80 backdrop-blur-xl border-b border-black/[0.06] px-5 md:px-14 py-4 md:py-5">
+      <header className="print:hidden sticky top-0 z-10 bg-[#f5f5f7]/80 backdrop-blur-xl border-b border-black/[0.06] px-5 md:px-14 py-4 md:py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <button
@@ -227,10 +240,10 @@ export default function SummaryPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-5 md:px-14 py-8 md:py-10 space-y-6">
+      <main className="max-w-7xl mx-auto px-5 md:px-14 py-8 md:py-10 space-y-6 print:p-0 print:max-w-none">
 
         {/* Year stat cards */}
-        <div className={`grid gap-4 grid-cols-2 ${isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        <div className={`print:hidden grid gap-4 grid-cols-2 ${isAdmin ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
           <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-6">
             <p className="text-[10px] md:text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Discharged</p>
             <p className="text-[24px] md:text-[32px] font-semibold text-gray-900 tabular-nums tracking-tight leading-none">{loading ? "—" : yearCount}</p>
@@ -251,7 +264,7 @@ export default function SummaryPage() {
         </div>
 
         {/* Charts row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="print:hidden grid grid-cols-1 md:grid-cols-2 gap-6">
 
           {/* Bar chart */}
           <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm px-5 md:px-7 py-5 md:py-6">
@@ -430,22 +443,49 @@ export default function SummaryPage() {
         </>)}
 
         {/* Monthly table */}
-        <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm overflow-hidden">
-          <div className="px-5 md:px-7 py-5 border-b border-gray-50">
+        <div className="bg-white rounded-xl md:rounded-2xl border border-black/[0.06] shadow-sm overflow-hidden print:shadow-none print:border-0 print:rounded-none">
+          <div className="print:hidden px-5 md:px-7 py-5 border-b border-gray-50 flex items-center justify-between">
             <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Month by Month</p>
+            {isAdmin && (
+              <button
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 active:scale-95 px-3 py-1.5 rounded-full transition"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+                  <path d="M6 9V3h12v6M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v7H6v-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+                Print
+              </button>
+            )}
+          </div>
+
+          {/* Print-only report header */}
+          <div className="hidden print:flex items-center justify-between gap-4 pb-6 mb-2 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <img src="/logo.jpg" alt="Mercy Hospital" className="h-14 w-14 rounded-full object-cover shrink-0" />
+              <div>
+                <p className="text-[11px] font-semibold tracking-widest text-gray-400 uppercase leading-none mb-1">Mercy Hospital · MUHCS</p>
+                <h2 className="text-[22px] font-semibold text-gray-900 tracking-tight leading-none">Month by Month</h2>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-[18px] font-semibold text-gray-900 leading-none">{year}</p>
+              <p className="text-[11px] text-gray-400 mt-1.5">Generated {new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}</p>
+            </div>
           </div>
           {loading ? (
             <div className="py-16 flex items-center justify-center">
               <div className="h-6 w-6 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
             </div>
           ) : (
-            <table className="w-full text-[13px]">
+            <table className="w-full text-[12px] md:text-[13px]">
               <thead>
                 <tr className="border-b border-gray-50">
-                  <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Month</th>
-                  <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DC</th>
-                  {isAdmin && <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Billed</th>}
-                  <th className="px-4 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Claim</th>
+                  <th className="px-2.5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Month</th>
+                  <th className="px-2.5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">DC</th>
+                  {isAdmin && <th className="px-2.5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Billed</th>}
+                  <th className="px-2.5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Claim</th>
+                  {isAdmin && <th className="px-2.5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Diff</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -456,18 +496,28 @@ export default function SummaryPage() {
                   const mBilled = m.reduce((s, r) => s + r.billed, 0)
                   return (
                     <tr key={i} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 md:px-7 py-4 font-medium text-gray-900">{name}</td>
-                      <td className="px-4 md:px-7 py-4 text-gray-500 tabular-nums">{m.length}</td>
-                      {isAdmin && <td className="px-4 md:px-7 py-4 text-gray-500 tabular-nums">{formatINR(mBilled)}</td>}
-                      <td className="px-4 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(mClaim)}</td>
+                      <td className="px-2.5 md:px-7 py-4 font-medium text-gray-900">{name}</td>
+                      <td className="px-2.5 md:px-7 py-4 text-gray-500 tabular-nums">{m.length}</td>
+                      {isAdmin && <td className="px-2.5 md:px-7 py-4 text-gray-500 tabular-nums">{formatINR(mBilled)}</td>}
+                      <td className="px-2.5 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(mClaim)}</td>
+                      {isAdmin && (
+                        <td className={`px-2.5 md:px-7 py-4 font-semibold tabular-nums ${mClaim - mBilled < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                          {formatDiff(mClaim - mBilled)}
+                        </td>
+                      )}
                     </tr>
                   )
                 })}
                 <tr className="bg-gray-50 border-t border-gray-200">
-                  <td className="px-4 md:px-7 py-4 font-semibold text-gray-900">Total</td>
-                  <td className="px-4 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{yearCount}</td>
-                  {isAdmin && <td className="px-4 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{formatINR(yearBilled)}</td>}
-                  <td className="px-4 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(yearClaim)}</td>
+                  <td className="px-2.5 md:px-7 py-4 font-semibold text-gray-900">Total</td>
+                  <td className="px-2.5 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{yearCount}</td>
+                  {isAdmin && <td className="px-2.5 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{formatINR(yearBilled)}</td>}
+                  <td className="px-2.5 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(yearClaim)}</td>
+                  {isAdmin && (
+                    <td className={`px-2.5 md:px-7 py-4 font-semibold tabular-nums ${yearClaim - yearBilled < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                      {formatDiff(yearClaim - yearBilled)}
+                    </td>
+                  )}
                 </tr>
               </tbody>
             </table>
