@@ -170,8 +170,6 @@ export default function MasterDashboard() {
 
   // Edit modal
   const [editRecord, setEditRecord]   = useState(null)
-  const [editReceived, setEditReceived] = useState("")
-  const [editStatus, setEditStatus]   = useState("pending")
   const [editSaving, setEditSaving]   = useState(false)
   const [editError, setEditError]     = useState("")
 
@@ -240,12 +238,17 @@ export default function MasterDashboard() {
       })
     }
 
-    const enriched = (admissions || []).map(a => ({
-      ...a,
-      ...balanceMap[a.id],
-      received: Number(a.claim_received || 0),
-      claimStatus: a.claim_status || "pending",
-    }))
+    const enriched = (admissions || []).map(a => {
+      const claimStatus = a.claim_status || "pending"
+      const claim = balanceMap[a.id]?.claim || 0
+      return {
+        ...a,
+        ...balanceMap[a.id],
+        claimStatus,
+        // no typed amount any more: settled = full claim received, pending = none
+        received: claimStatus === "settled" ? claim : 0,
+      }
+    })
 
     setRecords(enriched)
 
@@ -298,30 +301,26 @@ export default function MasterDashboard() {
   const grandCountSettled  = records.filter(r => r.claimStatus === "settled").length
   const grandCountPending  = records.filter(r => r.claimStatus === "pending").length
 
-  // ── Edit handlers ──
+  // ── Status handlers (admin only) ──
   function openEdit(record) {
+    if (!isAdmin) return
     setEditRecord(record)
-    setEditReceived(record.received > 0 ? record.received.toString() : "")
-    setEditStatus(record.claimStatus)
     setEditError("")
   }
 
-  async function saveEdit() {
-    if (!editRecord) return
-    const amount = editReceived === "" ? null : Number(editReceived)
-    if (amount !== null && isNaN(amount)) { setEditError("Enter a valid amount."); return }
-
+  async function setClaimStatus(newStatus) {
+    if (!editRecord || !isAdmin) return
     setEditSaving(true)
     const { error } = await supabase
       .from("admissions")
-      .update({ claim_received: amount, claim_status: editStatus })
+      .update({ claim_status: newStatus })
       .eq("id", editRecord.id)
 
     if (error) { setEditError(error.message); setEditSaving(false); return }
 
     setRecords(prev => prev.map(r =>
       r.id === editRecord.id
-        ? { ...r, received: amount || 0, claim_received: amount, claimStatus: editStatus, claim_status: editStatus }
+        ? { ...r, claimStatus: newStatus, claim_status: newStatus, received: newStatus === "settled" ? (r.claim || 0) : 0 }
         : r
     ))
     setEditSaving(false)
@@ -365,61 +364,60 @@ export default function MasterDashboard() {
         </div>
       )}
 
-      {/* Edit modal */}
-      {editRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setEditRecord(null)} />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
-            <div>
-              <h2 className="text-[17px] font-semibold text-gray-900">{editRecord.patients?.full_name}</h2>
-              <p className="text-[12px] text-gray-400 mt-0.5">Claim: {formatINR(editRecord.claim)}</p>
-            </div>
+      {/* Settle modal — admin only */}
+      {editRecord && isAdmin && (() => {
+        const isSettled = editRecord.claimStatus === "settled"
+        const st = STATUS_STYLES[editRecord.claimStatus] || STATUS_STYLES.pending
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-5">
+            <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setEditRecord(null)} />
+            <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-5">
+              <div>
+                <h2 className="text-[17px] font-semibold text-gray-900">{editRecord.patients?.full_name}</h2>
+                <p className="text-[12px] text-gray-400 mt-0.5">
+                  {editRecord.patients?.category || "—"} · DOD {formatDate(editRecord.discharge_date)}
+                </p>
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-1.5">Amount Received</label>
-              <input
-                type="number"
-                value={editReceived}
-                onChange={e => setEditReceived(e.target.value)}
-                placeholder="0"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 transition"
-              />
-            </div>
+              <div className="bg-gray-50 rounded-xl px-4 py-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest mb-1">MUHCS Claim</p>
+                  <p className="text-[20px] font-semibold text-gray-900 tabular-nums leading-none">{formatINR(editRecord.claim)}</p>
+                </div>
+                <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${st.class}`}>{st.label}</span>
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-2">Status</label>
-              <div className="grid grid-cols-2 gap-2">
-                {["pending","settled"].map(s => (
+              <p className="text-[12px] text-gray-400 leading-relaxed">
+                {isSettled
+                  ? "This claim is marked as settled. Mark it as pending only if it was settled by mistake."
+                  : "Marking as settled counts the full claim amount as received for this patient."}
+              </p>
+
+              {editError && <p className="text-[12px] text-red-500">{editError}</p>}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditRecord(null)}
+                  className="flex-1 py-2.5 text-[13px] font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition"
+                >Cancel</button>
+                {isSettled ? (
                   <button
-                    key={s}
-                    onClick={() => setEditStatus(s)}
-                    className={`py-2.5 rounded-xl text-[13px] font-semibold capitalize border-2 transition ${
-                      editStatus === s
-                        ? s === "settled" ? "border-emerald-500 bg-emerald-500 text-white"
-                          : "border-red-500 bg-red-500 text-white"
-                        : "border-gray-200 text-gray-500 hover:border-gray-300"
-                    }`}
-                  >{STATUS_STYLES[s].label}</button>
-                ))}
+                    onClick={() => setClaimStatus("pending")}
+                    disabled={editSaving}
+                    className="flex-1 py-2.5 text-[13px] font-semibold text-red-500 border border-red-200 hover:bg-red-50 disabled:opacity-50 rounded-xl transition"
+                  >{editSaving ? "Saving…" : "Mark as Pending"}</button>
+                ) : (
+                  <button
+                    onClick={() => setClaimStatus("settled")}
+                    disabled={editSaving}
+                    className="flex-1 py-2.5 text-[13px] font-semibold text-white bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 rounded-xl transition"
+                  >{editSaving ? "Saving…" : "Mark as Settled"}</button>
+                )}
               </div>
             </div>
-
-            {editError && <p className="text-[12px] text-red-500">{editError}</p>}
-
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={() => setEditRecord(null)}
-                className="flex-1 py-2.5 text-[13px] font-medium text-gray-600 border border-gray-200 rounded-xl hover:bg-gray-50 transition"
-              >Cancel</button>
-              <button
-                onClick={saveEdit}
-                disabled={editSaving}
-                className="flex-1 py-2.5 text-[13px] font-semibold text-white bg-gray-900 hover:bg-gray-700 disabled:opacity-50 rounded-xl transition"
-              >{editSaving ? "Saving…" : "Save"}</button>
-            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* Header */}
       <header className="sticky top-0 z-10 bg-[#f5f5f7]/80 backdrop-blur-xl border-b border-black/[0.06] px-5 md:px-14 py-4 md:py-5">
@@ -792,7 +790,7 @@ export default function MasterDashboard() {
                       <tr
                         key={r.id}
                         onClick={() => openEdit(r)}
-                        className="hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer"
+                        className={`transition-colors ${isAdmin ? "hover:bg-gray-50 active:bg-gray-100 cursor-pointer" : ""}`}
                       >
                         <td className="pl-6 pr-2 py-4 text-[12px] font-semibold text-gray-300 tabular-nums">{idx + 1}</td>
                         <td className="px-4 py-4">
@@ -832,7 +830,7 @@ export default function MasterDashboard() {
                     <div
                       key={r.id}
                       onClick={() => openEdit(r)}
-                      className="px-5 py-4 cursor-pointer hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                      className={`px-5 py-4 transition-colors ${isAdmin ? "cursor-pointer hover:bg-gray-50 active:bg-gray-100" : ""}`}
                     >
                       <div className="flex items-start gap-3">
                         <span className="text-[12px] font-semibold text-gray-300 tabular-nums pt-0.5 w-5 shrink-0">{idx + 1}</span>
