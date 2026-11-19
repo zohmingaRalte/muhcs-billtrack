@@ -28,6 +28,10 @@ function formatDiff(n) {
   return `${n > 0 ? "+" : "−"}${formatINR(Math.abs(n))}`
 }
 
+function diffClass(n) {
+  return n < 0 ? "rpt-diff-loss" : n > 0 ? "rpt-diff-gain" : ""
+}
+
 function shortDate(str) {
   if (!str) return "—"
   const [y, m, d] = str.split("T")[0].split("-").map(Number)
@@ -173,6 +177,33 @@ export default function ReportPage() {
         @page { size: A4; margin: 14mm; }
         body { background: #fff !important; }
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        /* Clean ruled tables */
+        .rpt-table { border-collapse: collapse; width: 100%; }
+        .rpt-table thead tr { background: transparent !important; }
+        .rpt-table th { font-size: 8.5pt; color: #4b5563; padding: 9px 10px; border-bottom: 1.5px solid #374151; }
+        .rpt-table td { font-size: 11pt; padding: 10px 10px; border-bottom: 0.5px solid #e5e7eb; }
+        .rpt-table tbody > tr { border-width: 0 !important; }
+        .rpt-table tbody > tr:nth-child(even) { background: #f9fafb; }
+
+        /* Strong total rows */
+        .rpt-table tbody > tr.rpt-total { background: #f3f4f6 !important; }
+        .rpt-table tr.rpt-total td { font-weight: 700; border-top: 2px solid #111827; border-bottom: 0; }
+
+        /* Gain / loss tint (the +/− sign still carries the meaning in black and white) */
+        .rpt-table td.rpt-diff-loss { background: #fee2e2 !important; color: #b91c1c !important; }
+        .rpt-table td.rpt-diff-gain { background: #dcfce7 !important; color: #15803d !important; }
+
+        /* Patient tables have more columns: slightly tighter so they fit portrait */
+        .rpt-dense th { padding: 7px 5px; font-size: 8pt; }
+        .rpt-dense td { font-size: 9.5pt; padding: 7px 5px; }
+
+        /* Page breaks: repeat header on every page, never split a row,
+           keep headings with their table, don't strand the total row */
+        .rpt-table thead { display: table-header-group; break-after: avoid; page-break-after: avoid; }
+        .rpt-table tr { break-inside: avoid; page-break-inside: avoid; }
+        .rpt-table tr.rpt-total { break-before: avoid; page-break-before: avoid; }
+        .rpt-keep-next { break-after: avoid; page-break-after: avoid; }
       }
     `}</style>
     <div className="min-h-screen bg-[#f5f5f7] print:bg-white">
@@ -272,9 +303,9 @@ export default function ReportPage() {
 
               {/* Ward table */}
               <div>
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Ward-wise Summary</p>
-                <div className="border border-gray-100 rounded-xl overflow-hidden">
-                  <table className="w-full text-[12px] md:text-[13px]">
+                <p className="rpt-keep-next text-[11px] font-semibold text-gray-400 uppercase tracking-widest mb-3">Ward-wise Summary</p>
+                <div className="border border-gray-100 rounded-xl overflow-hidden print:border-0 print:rounded-none print:overflow-visible">
+                  <table className="rpt-table w-full text-[12px] md:text-[13px]">
                     <thead>
                       <tr className="bg-gray-50 border-b border-gray-100">
                         <th className={`${thClass} text-left`}>Ward</th>
@@ -295,19 +326,19 @@ export default function ReportPage() {
                           {isAdmin && <td className="px-3 md:px-5 py-3.5 text-right text-gray-600 tabular-nums">{r.count ? formatINR(r.billed) : "—"}</td>}
                           <td className="px-3 md:px-5 py-3.5 text-right font-semibold text-emerald-600 tabular-nums">{r.count ? formatINR(r.claim) : "—"}</td>
                           {isAdmin && (
-                            <td className={`px-3 md:px-5 py-3.5 text-right font-semibold tabular-nums ${r.diff < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                            <td className={`px-3 md:px-5 py-3.5 text-right font-semibold tabular-nums ${r.diff < 0 ? "text-red-500" : "text-emerald-600"} ${r.count ? diffClass(r.diff) : ""}`}>
                               {r.count ? formatDiff(r.diff) : "—"}
                             </td>
                           )}
                         </tr>
                       ))}
-                      <tr className="bg-gray-50 border-t border-gray-200">
+                      <tr className="rpt-total bg-gray-50 border-t border-gray-200">
                         <td className="px-3 md:px-5 py-3.5 font-semibold text-gray-900">Total</td>
                         <td className="px-3 md:px-5 py-3.5 text-right font-semibold text-gray-900 tabular-nums">{totals.count}</td>
                         {isAdmin && <td className="px-3 md:px-5 py-3.5 text-right font-semibold text-gray-900 tabular-nums">{formatINR(totals.billed)}</td>}
                         <td className="px-3 md:px-5 py-3.5 text-right font-semibold text-emerald-600 tabular-nums">{formatINR(totals.claim)}</td>
                         {isAdmin && (
-                          <td className={`px-3 md:px-5 py-3.5 text-right font-semibold tabular-nums ${totals.diff < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                          <td className={`px-3 md:px-5 py-3.5 text-right font-semibold tabular-nums ${totals.diff < 0 ? "text-red-500" : "text-emerald-600"} ${diffClass(totals.diff)}`}>
                             {formatDiff(totals.diff)}
                           </td>
                         )}
@@ -333,12 +364,12 @@ export default function ReportPage() {
                 const td = "px-1.5 md:px-3 py-2.5"
                 return (
                   <div key={w.value}>
-                    <div className="flex items-baseline justify-between mb-3">
+                    <div className="rpt-keep-next flex items-baseline justify-between mb-3">
                       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">{w.label} Ward</p>
                       <p className="text-[11px] text-gray-400 tabular-nums">{recs.length} patient{recs.length !== 1 ? "s" : ""}</p>
                     </div>
-                    <div className="border border-gray-100 rounded-xl overflow-x-auto print:overflow-visible">
-                      <table className="w-full text-[10px] md:text-[12px]">
+                    <div className="border border-gray-100 rounded-xl overflow-x-auto print:overflow-visible print:border-0 print:rounded-none">
+                      <table className="rpt-table rpt-dense w-full text-[10px] md:text-[12px]">
                         <thead>
                           <tr className="bg-gray-50 border-b border-gray-100">
                             <th className={`${th} text-left`}>#</th>
@@ -372,13 +403,13 @@ export default function ReportPage() {
                               {isAdmin && <td className={`${td} text-right text-gray-700 tabular-nums`}>{formatINR(r.billed)}</td>}
                               <td className={`${td} text-right font-semibold text-emerald-600 tabular-nums`}>{formatINR(r.claim)}</td>
                               {isAdmin && (
-                                <td className={`${td} text-right font-semibold tabular-nums ${r.claim - r.billed < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                                <td className={`${td} text-right font-semibold tabular-nums ${r.claim - r.billed < 0 ? "text-red-500" : "text-emerald-600"} ${diffClass(r.claim - r.billed)}`}>
                                   {formatDiff(r.claim - r.billed)}
                                 </td>
                               )}
                             </tr>
                           ))}
-                          <tr className="bg-gray-50 border-t border-gray-200 print:break-inside-avoid">
+                          <tr className="rpt-total bg-gray-50 border-t border-gray-200 print:break-inside-avoid">
                             <td className={td} />
                             <td className={`${td} font-semibold text-gray-900`}>Total</td>
                             <td className={`${td} hidden md:table-cell print:table-cell`} />
@@ -388,7 +419,7 @@ export default function ReportPage() {
                             {isAdmin && <td className={`${td} text-right font-semibold text-gray-900 tabular-nums`}>{formatINR(sumBilled)}</td>}
                             <td className={`${td} text-right font-semibold text-emerald-600 tabular-nums`}>{formatINR(sumClaim)}</td>
                             {isAdmin && (
-                              <td className={`${td} text-right font-semibold tabular-nums ${sumClaim - sumBilled < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                              <td className={`${td} text-right font-semibold tabular-nums ${sumClaim - sumBilled < 0 ? "text-red-500" : "text-emerald-600"} ${diffClass(sumClaim - sumBilled)}`}>
                                 {formatDiff(sumClaim - sumBilled)}
                               </td>
                             )}

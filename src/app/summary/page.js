@@ -30,6 +30,10 @@ function formatINR(n) {
   return `₹${Number(n || 0).toLocaleString("en-IN")}`
 }
 
+function diffClass(n) {
+  return n < 0 ? "rpt-diff-loss" : n > 0 ? "rpt-diff-gain" : ""
+}
+
 // diff = Claim − Billed  →  "+" gain, "−" loss
 function formatDiff(n) {
   if (!n) return "—"
@@ -209,6 +213,26 @@ export default function SummaryPage() {
         @page { size: A4; margin: 14mm; }
         body { background: #fff !important; }
         * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        /* Clean ruled tables */
+        .rpt-table { border-collapse: collapse; width: 100%; }
+        .rpt-table thead tr { background: transparent !important; }
+        .rpt-table th { font-size: 8.5pt; color: #4b5563; padding: 9px 10px; border-bottom: 1.5px solid #374151; }
+        .rpt-table td { font-size: 11pt; padding: 10px 10px; border-bottom: 0.5px solid #e5e7eb; }
+        .rpt-table tbody > tr { border-width: 0 !important; }
+        .rpt-table tbody > tr:nth-child(even) { background: #f9fafb; }
+
+        /* Strong total rows */
+        .rpt-table tbody > tr.rpt-total { background: #f3f4f6 !important; }
+        .rpt-table tr.rpt-total td { font-weight: 700; border-top: 2px solid #111827; border-bottom: 0; }
+
+        /* Gain / loss tint (the +/− sign still carries the meaning in black and white) */
+        .rpt-table td.rpt-diff-loss { background: #fee2e2 !important; color: #b91c1c !important; }
+        .rpt-table td.rpt-diff-gain { background: #dcfce7 !important; color: #15803d !important; }
+
+        /* Patient tables have more columns: slightly tighter so they fit portrait */
+        .rpt-dense th { padding: 7px 5px; font-size: 8pt; }
+        .rpt-dense td { font-size: 9.5pt; padding: 7px 5px; }
       }
     `}</style>
     <div className="min-h-screen bg-[#f5f5f7] print:bg-white">
@@ -478,7 +502,7 @@ export default function SummaryPage() {
               <div className="h-6 w-6 border-2 border-gray-200 border-t-gray-900 rounded-full animate-spin" />
             </div>
           ) : (
-            <table className="w-full text-[12px] md:text-[13px]">
+            <table className="rpt-table w-full text-[12px] md:text-[13px]">
               <thead>
                 <tr className="border-b border-gray-50">
                   <th className="px-2.5 md:px-7 py-4 text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Month</th>
@@ -501,20 +525,20 @@ export default function SummaryPage() {
                       {isAdmin && <td className="px-2.5 md:px-7 py-4 text-gray-500 tabular-nums">{formatINR(mBilled)}</td>}
                       <td className="px-2.5 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(mClaim)}</td>
                       {isAdmin && (
-                        <td className={`px-2.5 md:px-7 py-4 font-semibold tabular-nums ${mClaim - mBilled < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                        <td className={`px-2.5 md:px-7 py-4 font-semibold tabular-nums ${mClaim - mBilled < 0 ? "text-red-500" : "text-emerald-600"} ${diffClass(mClaim - mBilled)}`}>
                           {formatDiff(mClaim - mBilled)}
                         </td>
                       )}
                     </tr>
                   )
                 })}
-                <tr className="bg-gray-50 border-t border-gray-200">
+                <tr className="rpt-total bg-gray-50 border-t border-gray-200">
                   <td className="px-2.5 md:px-7 py-4 font-semibold text-gray-900">Total</td>
                   <td className="px-2.5 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{yearCount}</td>
                   {isAdmin && <td className="px-2.5 md:px-7 py-4 font-semibold text-gray-900 tabular-nums">{formatINR(yearBilled)}</td>}
                   <td className="px-2.5 md:px-7 py-4 font-semibold text-emerald-600 tabular-nums">{formatINR(yearClaim)}</td>
                   {isAdmin && (
-                    <td className={`px-2.5 md:px-7 py-4 font-semibold tabular-nums ${yearClaim - yearBilled < 0 ? "text-red-500" : "text-emerald-600"}`}>
+                    <td className={`px-2.5 md:px-7 py-4 font-semibold tabular-nums ${yearClaim - yearBilled < 0 ? "text-red-500" : "text-emerald-600"} ${diffClass(yearClaim - yearBilled)}`}>
                       {formatDiff(yearClaim - yearBilled)}
                     </td>
                   )}

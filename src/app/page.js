@@ -29,6 +29,12 @@ function getDays(a) {
     : calcActive(a.admission_date)
 }
 
+// "2026-11-05" -> { key: "2026-11", year: 2026, month: 11 }  (month is 1-12)
+function dodMonthInfo(date) {
+  const [year, month] = date.split("T")[0].split("-").map(Number)
+  return { key: `${year}-${String(month).padStart(2, "0")}`, year, month }
+}
+
 function formatDate(date) {
   if (!date) return "—"
   const [y, m, d] = date.split("T")[0].split("-").map(Number)
@@ -267,8 +273,7 @@ export default function Dashboard() {
     .filter(a => {
       if (activeTab !== "discharged" || dodMonthFilter === "all") return true
       if (!a.discharge_date) return false
-      const d = new Date(a.discharge_date)
-      return `${d.getFullYear()}-${d.getMonth()}` === dodMonthFilter
+      return dodMonthInfo(a.discharge_date).key === dodMonthFilter
     })
   const isAdminOrCounter = user?.role === "admin" || user?.role === "counter"
   const displayData     = [...filteredData].sort((a, b) => {
@@ -723,9 +728,8 @@ export default function Dashboard() {
               const monthMap = {}
               dischargedCases.forEach(a => {
                 if (!a.discharge_date) return
-                const d = new Date(a.discharge_date)
-                const key = `${d.getFullYear()}-${d.getMonth()}`
-                if (!monthMap[key]) monthMap[key] = { key, label: `${monthNames[d.getMonth()]} ${d.getFullYear()}`, count: 0 }
+                const { key, year, month } = dodMonthInfo(a.discharge_date)
+                if (!monthMap[key]) monthMap[key] = { key, label: `${monthNames[month - 1]} ${year}`, count: 0 }
                 monthMap[key].count++
               })
               const months = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key))
