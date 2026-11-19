@@ -267,14 +267,15 @@ export default function Dashboard() {
   const activeCases     = admissions.filter(a => a.status === "admitted")
   const dischargedCases = admissions.filter(a => a.status === "discharged")
   const baseData        = activeTab === "active" ? activeCases : dischargedCases
-  const filteredData    = baseData
-    .filter(a => search.trim() ? a.patients?.full_name?.toLowerCase().includes(search.toLowerCase()) : true)
-    .filter(a => wardFilter !== "all" ? a.accommodation === wardFilter : true)
-    .filter(a => {
-      if (activeTab !== "discharged" || dodMonthFilter === "all") return true
-      if (!a.discharge_date) return false
-      return dodMonthInfo(a.discharge_date).key === dodMonthFilter
-    })
+  // Each filter as a reusable test, so the pill counts can leave out their own filter
+  const matchesSearch = a => !search.trim() || a.patients?.full_name?.toLowerCase().includes(search.toLowerCase())
+  const matchesWard   = a => wardFilter === "all" || a.accommodation === wardFilter
+  const matchesMonth  = a => {
+    if (activeTab !== "discharged" || dodMonthFilter === "all") return true
+    if (!a.discharge_date) return false
+    return dodMonthInfo(a.discharge_date).key === dodMonthFilter
+  }
+  const filteredData    = baseData.filter(a => matchesSearch(a) && matchesWard(a) && matchesMonth(a))
   const isAdminOrCounter = user?.role === "admin" || user?.role === "counter"
   const displayData     = [...filteredData].sort((a, b) => {
     if (activeTab === "discharged" && isAdminOrCounter && sortMode === "manual") {
@@ -699,10 +700,12 @@ export default function Dashboard() {
                 { value: "deluxe",       label: "Deluxe"      },
                 { value: "cabin",        label: "Cabin"       },
               ].map(w => {
+                // counts respect search + selected month, but not the ward filter itself
+                const wardBase = baseData.filter(a => matchesSearch(a) && matchesMonth(a))
                 const count = w.value === "all"
-                  ? baseData.length
-                  : baseData.filter(a => a.accommodation === w.value).length
-                if (w.value !== "all" && count === 0) return null
+                  ? wardBase.length
+                  : wardBase.filter(a => a.accommodation === w.value).length
+                if (w.value !== "all" && count === 0 && wardFilter !== w.value) return null
                 return (
                   <button
                     key={w.value}
@@ -725,15 +728,22 @@ export default function Dashboard() {
             {/* DOD Month filter — discharged tab only */}
             {activeTab === "discharged" && (() => {
               // Build unique months from discharged cases
+              // counts respect search + selected ward, but not the month filter itself
               const monthMap = {}
+              let allMonthsCount = 0
               dischargedCases.forEach(a => {
                 if (!a.discharge_date) return
                 const { key, year, month } = dodMonthInfo(a.discharge_date)
                 if (!monthMap[key]) monthMap[key] = { key, label: `${monthNames[month - 1]} ${year}`, count: 0 }
-                monthMap[key].count++
+                if (matchesSearch(a) && matchesWard(a)) {
+                  monthMap[key].count++
+                  allMonthsCount++
+                }
               })
-              const months = Object.values(monthMap).sort((a, b) => a.key.localeCompare(b.key))
-              if (months.length === 0) return null
+              const months = Object.values(monthMap)
+                .filter(m => m.count > 0 || m.key === dodMonthFilter)
+                .sort((a, b) => a.key.localeCompare(b.key))
+              if (Object.keys(monthMap).length === 0) return null
               return (
                 <div className="flex items-center gap-2 flex-wrap mb-5">
                   <button
@@ -741,7 +751,7 @@ export default function Dashboard() {
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium transition ${dodMonthFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500 hover:bg-gray-200"}`}
                   >
                     All Months
-                    <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${dodMonthFilter === "all" ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{dischargedCases.length}</span>
+                    <span className={`text-[11px] font-semibold px-1.5 py-0.5 rounded-full tabular-nums ${dodMonthFilter === "all" ? "bg-white/20 text-white" : "bg-gray-200 text-gray-500"}`}>{allMonthsCount}</span>
                   </button>
                   {months.map(m => (
                     <button
